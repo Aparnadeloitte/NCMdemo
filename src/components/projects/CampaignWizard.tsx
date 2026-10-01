@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/ui/Feedback";
-import { financialRows, physicalRows, seedProjects } from "@/data/projects";
+import { financialRows, physicalRows, reportingPeriodLabel, reportingPeriods, seedProjects } from "@/data/projects";
 import { getProject, readCampaignDraft, saveCampaignDraft, submitCampaign } from "@/services/projects.service";
 import type { CampaignDraft, NcmProject } from "@/types/domain";
 
@@ -102,10 +102,16 @@ export function CampaignWizard({ initialId }: { initialId?: string }) {
               <div className="form-grid">
                 <label className="field">
                   <span>Reporting period</span>
-                  <select value={draft.reportingPeriod} onChange={(event) => void persist({ ...draft, reportingPeriod: event.target.value })}>
-                    <option>Sep 2026</option>
-                    <option>Aug 2026</option>
-                    <option>Jul 2026</option>
+                  <select
+                    value={reportingPeriodLabel(draft.reportingFrom, draft.reportingTo)}
+                    onChange={(event) => {
+                      const period = reportingPeriods.find((item) => item.label === event.target.value) ?? reportingPeriods[0];
+                      void persist({ ...draft, reportingFrom: period.from, reportingTo: period.to });
+                    }}
+                  >
+                    {reportingPeriods.map((period) => (
+                      <option key={period.label} value={period.label}>{period.label}</option>
+                    ))}
                   </select>
                 </label>
                 <label className="field">

@@ -181,11 +181,23 @@ export const financialRows = [
   { component: "Monitoring & Assessment", unit: "Nos.", budget: "100", spent: "40" },
 ];
 
+export const reportingPeriods = [
+  { label: "Sep 2026", from: "2026-09-01", to: "2026-09-30" },
+  { label: "Aug 2026", from: "2026-08-01", to: "2026-08-31" },
+  { label: "Jul 2026", from: "2026-07-01", to: "2026-07-31" },
+] as const;
+
+export type ReportingPeriodLabel = (typeof reportingPeriods)[number]["label"];
+
+export function reportingPeriodLabel(from: string, to: string): ReportingPeriodLabel {
+  return reportingPeriods.find((period) => period.from === from && period.to === to)?.label ?? reportingPeriods[0].label;
+}
+
 export function emptyCampaign(campaignId = "NCM-MG-2026-00142"): CampaignDraft {
   return {
     campaignId,
-    reportingFrom: "2026-09-01",
-    reportingTo: "2026-09-07",
+    reportingFrom: reportingPeriods[0].from,
+    reportingTo: reportingPeriods[0].to,
     reportingType: "Monthly",
     physical: ["20", "20", "20"],
     financial: ["20", "20", "20"],
