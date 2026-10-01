@@ -204,7 +204,7 @@ export function CoastalMap() {
             <div><dt>Last Updated</dt><dd>12 Sep 2026, 04:30 PM</dd></div>
           </dl>
           <div className="project-actions">
-            <a className="btn-ghost small" href="/interventions">View Details</a>
+            <a className="btn-ghost small" href="/projects/NCM-MG-2026-00142">View Details</a>
             <button className="btn-primary small" type="button" onClick={focusProject}>View on Map</button>
           </div>
         </div>

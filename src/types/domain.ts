@@ -87,3 +87,49 @@ export type ModuleId =
   | "grievances"
   | "users"
   | "map";
+
+export type ProjectStatus = "Ongoing" | "Completed" | "Pending";
+
+export type ProjectActivity = {
+  id: string;
+  name: string;
+  detail: string;
+  image: string;
+  costAdded: boolean;
+  date: string;
+};
+
+export type NcmProject = {
+  id: string;
+  campaignCode: string;
+  title: string;
+  program: string;
+  state: string;
+  district: string;
+  location: string;
+  interventionType: string;
+  agency: string;
+  area: string;
+  polygonArea: string;
+  status: ProjectStatus;
+  totalCost: string;
+  updated: string;
+  start: string;
+  end: string;
+  latitude: number;
+  longitude: number;
+  coastline: string;
+  tide: string;
+  image: string;
+  activities: ProjectActivity[];
+};
+
+export type CampaignDraft = {
+  campaignId: string;
+  reportingFrom: string;
+  reportingTo: string;
+  reportingType: string;
+  physical: string[];
+  financial: string[];
+  photos: string[];
+};

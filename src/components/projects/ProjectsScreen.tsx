@@ -1,0 +1,100 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { DataTable, Pagination } from "@/components/ui/DataTable";
+import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/ui/Feedback";
+import { projectKpis } from "@/data/projects";
+import { states } from "@/data/options";
+import { listProjects } from "@/services/projects.service";
+import type { ListQuery, NcmProject } from "@/types/domain";
+
+export function ProjectsScreen() {
+  const [query, setQuery] = useState<ListQuery>({ search: "", status: "", state: "", page: 1, pageSize: 6 });
+  const [rows, setRows] = useState<NcmProject[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    setRows(null);
+    setError("");
+    listProjects(query)
+      .then((result) => {
+        if (!active) return;
+        setRows(result.items);
+        setTotal(result.total);
+      })
+      .catch((caught: unknown) => {
+        if (active) setError(caught instanceof Error ? caught.message : "Unable to load projects.");
+      });
+    return () => { active = false; };
+  }, [query]);
+
+  return (
+    <div className="page">
+      <header className="page-head">
+        <div>
+          <h1>Projects</h1>
+          <p>Coastal restoration projects tracked under NCM 2.0.</p>
+        </div>
+        <Link className="btn-primary" href="/projects/new">Create New Project</Link>
+      </header>
+      <section className="kpi-grid" aria-label="Project summary">
+        {projectKpis.map((kpi) => (
+          <article key={kpi.id} className="kpi">
+            <img src={kpi.icon} alt="" />
+            <div><p>{kpi.label}</p><strong>{kpi.value}</strong><small>{kpi.note}</small></div>
+          </article>
+        ))}
+      </section>
+      <form className="filters" onSubmit={(event) => event.preventDefault()}>
+        <label>
+          <span className="sr-only">Search</span>
+          <span className="search-field">
+            <img src="/images/search_icon_dashboard.svg" alt="" />
+            <input value={query.search ?? ""} placeholder="Search location, project, title…" onChange={(event) => setQuery((current) => ({ ...current, search: event.target.value, page: 1 }))} />
+          </span>
+        </label>
+        <label>
+          <span className="sr-only">Intervention type</span>
+          <select value={query.status ?? ""} onChange={(event) => setQuery((current) => ({ ...current, status: event.target.value, page: 1 }))}>
+            <option value="">All statuses</option>
+            <option value="Ongoing">Ongoing</option>
+            <option value="Pending">Pending</option>
+            <option value="Completed">Completed</option>
+          </select>
+        </label>
+        <label>
+          <span className="sr-only">State</span>
+          <select value={query.state ?? ""} onChange={(event) => setQuery((current) => ({ ...current, state: event.target.value, page: 1 }))}>
+            <option value="">All states / UTs</option>
+            {states.map((state) => <option key={state.value} value={state.label}>{state.label}</option>)}
+          </select>
+        </label>
+      </form>
+      {error ? <ErrorState message={error} onRetry={() => setQuery((current) => ({ ...current }))} /> : null}
+      {!rows && !error ? <LoadingState label="Loading projects…" /> : null}
+      {rows && rows.length === 0 ? <EmptyState title="No projects found" message="Try a different search, status or state." /> : null}
+      {rows && rows.length > 0 ? (
+        <section className="panel">
+          <DataTable
+            rows={rows}
+            rowKey={(row) => row.id}
+            columns={[
+              { key: "id", header: "Project ID", render: (row) => row.campaignCode },
+              { key: "title", header: "Title", render: (row) => <span className="project-title"><img src="/images/plant_icon.svg" alt="" />{row.title}</span> },
+              { key: "state", header: "State/UT", render: (row) => row.state },
+              { key: "district", header: "District", render: (row) => row.district },
+              { key: "type", header: "Intervention Type", render: (row) => row.interventionType },
+              { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+              { key: "cost", header: "Total Cost", render: (row) => row.totalCost },
+              { key: "action", header: "Action", render: (row) => <Link className="text-link" href={`/projects/${row.id}`}>View Details</Link> },
+            ]}
+          />
+          <Pagination page={query.page} pageSize={query.pageSize} total={total} onPage={(page) => setQuery((current) => ({ ...current, page }))} />
+        </section>
+      ) : null}
+    </div>
+  );
+}

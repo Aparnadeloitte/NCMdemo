@@ -25,7 +25,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       <aside className={`sidebar${open ? " open" : ""}`}>
         <nav aria-label="Primary">
           {items.map((item) => {
-            const active = pathname === item.href;
+            const active = item.href === "/dashboard" ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link key={item.href} href={item.href} className={`nav-link${active ? " active" : ""}`} aria-current={active ? "page" : undefined} onClick={onClose}>
                 <span className="nav-ico" style={{ ["--ico" as string]: `url("${encodeURI(item.icon)}")` }} />

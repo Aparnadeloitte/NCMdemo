@@ -32,8 +32,13 @@ const statusLabel: Record<string, string> = {
   rejected: "Rejected",
   draft: "Draft",
   completed: "Completed",
+  ongoing: "Ongoing",
+  Ongoing: "Ongoing",
+  Completed: "Completed",
+  Pending: "Pending",
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  return <span className={`badge badge-${status}`}>{statusLabel[status] ?? status}</span>;
+  const tone = status.toLowerCase() === "ongoing" ? "active" : status.toLowerCase();
+  return <span className={`badge badge-${tone}`}>{statusLabel[status] ?? status}</span>;
 }

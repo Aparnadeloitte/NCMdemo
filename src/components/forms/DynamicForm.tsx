@@ -10,7 +10,6 @@ type DynamicFormProps = {
   defaultValues: FormValues;
   submitLabel: string;
   cancelLabel?: string;
-  
   onSubmit: (values: FormValues) => Promise<void>;
   onCancel?: () => void;
 };

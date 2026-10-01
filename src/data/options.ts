@@ -80,6 +80,7 @@ export const districtsByState: Record<string, FieldOption[]> = {
   ],
   "tamil-nadu": [
     { label: "Chennai", value: "chennai" },
+    { label: "Cuddalore", value: "cuddalore" },
     { label: "Nagapattinam", value: "nagapattinam" },
     { label: "Ramanathapuram", value: "ramanathapuram" },
   ],
