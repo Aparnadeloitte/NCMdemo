@@ -80,10 +80,10 @@ export const moduleCopy: Record<Exclude<ModuleId, "map">, { title: string; descr
 
 export const dashboardSnapshot: DashboardSnapshot = {
   kpis: [
-    { id: "interventions", label: "Interventions", value: "128", note: "18 updated this month", icon: "/images/Folder_dashboard.svg" },
-    { id: "documents", label: "Documents", value: "86", note: "4 new circulars", icon: "/images/File_dashboard.svg" },
-    { id: "records", label: "Field records", value: "2,340", note: "MRV submissions", icon: "/images/Film_dashboard.svg" },
-    { id: "sites", label: "Coastal sites", value: "312", note: "Across 9 states & 3 UTs", icon: "/images/Grid_dashboard.svg" },
+    { id: "projects", label: "Total Projects", value: "245", note: "+3.2% vs last month", icon: "/images/File_dashboard.svg" },
+    { id: "ongoing", label: "Ongoing Interventions", value: "168", note: "+5.2% vs last month", icon: "/images/Folder_dashboard.svg" },
+    { id: "funds", label: "Funds Released", value: "1,246 Cr", note: "", icon: "/images/Film_dashboard.svg" },
+    { id: "progress", label: "Physical Progress", value: "92%", note: "+0.8% vs last month", icon: "/images/Grid_dashboard.svg" },
   ],
   bars: [
     { label: "Gujarat", value: 18 },

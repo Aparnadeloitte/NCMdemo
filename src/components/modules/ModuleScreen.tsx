@@ -4,11 +4,16 @@ import { useEffect, useState } from "react";
 import { CoastalMap } from "@/components/dashboard/CoastalMap";
 import { DataTable, Pagination } from "@/components/ui/DataTable";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/ui/Feedback";
+import { directoryUsers } from "@/data/auth";
 import { states } from "@/data/options";
+import { getSession } from "@/lib/session";
 import { getModuleCopy, listRecords, reviewRecord } from "@/services/records.service";
 import type { ListQuery, ModuleId, PortalRecord, RecordStatus } from "@/types/domain";
 
 const statuses: RecordStatus[] = ["active", "pending", "approved", "rejected", "draft", "completed"];
+const onboardingReviewers = new Set(
+  directoryUsers.filter((user) => user.nextStep === "onboarding").map((user) => user.identifier.toLowerCase()),
+);
 
 type AiReviewResult = {
   confidence: number;
@@ -41,6 +46,12 @@ function RecordScreen({ moduleId }: { moduleId: Exclude<ModuleId, "map"> }) {
   const [deciding, setDeciding] = useState(false);
   const [aiReview, setAiReview] = useState<AiReviewResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [reviewLocked, setReviewLocked] = useState(false);
+
+  useEffect(() => {
+    const identifier = getSession()?.identifier.trim().toLowerCase() ?? "";
+    setReviewLocked(onboardingReviewers.has(identifier));
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -152,7 +163,7 @@ function RecordScreen({ moduleId }: { moduleId: Exclude<ModuleId, "map"> }) {
                     key: "action",
                     header: "Action",
                     render: (row: PortalRecord) => row.status === "pending"
-                      ? <button className="btn-ghost small" type="button" onClick={() => { setReview(row); setAiReview(null); }}>Review</button>
+                      ? <button className="btn-ghost small" type="button" disabled={reviewLocked} onClick={() => { setReview(row); setAiReview(null); }}>Review</button>
                       : "—",
                   }]
                 : []),

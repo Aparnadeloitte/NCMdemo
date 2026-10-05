@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { LayerGroup, Map as LeafletMap } from "leaflet";
+import type { LayerGroup, Map as LeafletMap, Marker } from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 type LayerId =
@@ -46,10 +46,29 @@ const sites: { name: string; count: string; color: string; lat: number; lng: num
 
 const PICHAVARAM: [number, number] = [11.43, 79.79];
 
-export function CoastalMap() {
+export type MapProject = {
+  id: string;
+  title: string;
+  code: string;
+  state: string;
+  district: string;
+  location: string;
+  interventionType: string;
+  agency: string;
+  area: string;
+  updated: string;
+  status: string;
+  image: string;
+  latitude: number;
+  longitude: number;
+};
+
+export function CoastalMap({ stateName = "", query = "", project = undefined }: { stateName?: string; query?: string; project?: MapProject | null }) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const groups = useRef<Partial<Record<LayerId, LayerGroup>>>({});
+  const siteMarkers = useRef<Marker[]>([]);
+  const [ready, setReady] = useState(false);
   const [active, setActive] = useState<Record<LayerId, boolean>>(() =>
     Object.fromEntries(layers.map((layer) => [layer.id, layer.defaultOn])) as Record<LayerId, boolean>,
   );
@@ -93,15 +112,16 @@ export function CoastalMap() {
       L.circle([9.6, 79.15], { radius: 50000, color: "#2f9d6a", weight: 1, fillColor: "#49c48a", fillOpacity: 0.35 }).addTo(seagrass);
 
       const siteGroup = L.layerGroup().addTo(map);
-      sites.forEach((site) => {
+      siteMarkers.current = sites.map((site) => {
         const icon = L.divIcon({
           className: "map-pin",
           html: `<span style="background:${site.color}">${site.count}</span>`,
           iconSize: [36, 36],
           iconAnchor: [18, 18],
         });
-        L.marker([site.lat, site.lng], { icon, title: site.name }).addTo(siteGroup);
+        return L.marker([site.lat, site.lng], { icon, title: site.name }).addTo(siteGroup);
       });
+      setReady(true);
       L.marker([10.55, 72.65], {
         icon: L.divIcon({
           className: "map-label",
@@ -137,6 +157,8 @@ export function CoastalMap() {
       cancelled = true;
       mapRef.current?.remove();
       mapRef.current = null;
+      siteMarkers.current = [];
+      setReady(false);
     };
     // Map is created once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -168,9 +190,49 @@ export function CoastalMap() {
     });
   }
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const state = stateName.trim().toLowerCase();
+    const needle = query.trim().toLowerCase();
+    siteMarkers.current.forEach((marker) => {
+      const name = (marker.options.title ?? "").toLowerCase();
+      const stateOk = !state || name === state || name.startsWith(`${state} `);
+      const queryHitsSite = !needle || sites.some((site) => site.name.toLowerCase().includes(needle));
+      const queryOk = !needle || !queryHitsSite || name.includes(needle);
+      const show = stateOk && queryOk;
+      if (show) marker.addTo(map);
+      else marker.remove();
+    });
+    if (project) map.flyTo([project.latitude, project.longitude], 8, { duration: 0.7 });
+    else if (state || needle) {
+      const hit = sites.find((site) => {
+        const name = site.name.toLowerCase();
+        return (state && (name === state || name.startsWith(`${state} `))) || (needle && name.includes(needle));
+      });
+      if (hit) map.flyTo([hit.lat, hit.lng], 7, { duration: 0.7 });
+    } else map.flyTo([18.6, 80.2], 5, { duration: 0.7 });
+  }, [ready, stateName, query, project]);
+
   function focusProject() {
-    mapRef.current?.flyTo(PICHAVARAM, 9, { duration: 0.8 });
+    const target: [number, number] = project ? [project.latitude, project.longitude] : PICHAVARAM;
+    mapRef.current?.flyTo(target, 9, { duration: 0.8 });
   }
+
+  const card = project === undefined ? {
+    id: "NCM-MG-2026-00142",
+    title: "Mangrove Restoration at Pichavaram",
+    code: "NCM/MG/2026/00142",
+    state: "Tamil Nadu",
+    district: "Cuddalore",
+    location: "Pichavaram",
+    interventionType: "Mangrove Restoration",
+    agency: "TN Forest Department",
+    area: "250 ha",
+    updated: "12 Sep 2026, 04:30 PM",
+    status: "Ongoing",
+    image: "/images/coast.svg",
+  } : project;
 
   return (
     <div className="figma-map">
@@ -186,28 +248,37 @@ export function CoastalMap() {
         <button type="button" onClick={clearAll}>Clear All</button>
       </aside>
       <article className="project-card">
-        <div className="project-photo">
-          <img src="/images/coast.svg" alt="" />
-          <span>Ongoing</span>
-        </div>
-        <div className="project-body">
-          <h3>Project / Intervention Details</h3>
-          <strong>Mangrove Restoration at Pichavaram</strong>
-          <p className="project-id">NCM/MG/2026/00142</p>
-          <dl>
-            <div><dt>State / UT</dt><dd>Tamil Nadu</dd></div>
-            <div><dt>District</dt><dd>Cuddalore</dd></div>
-            <div><dt>Location</dt><dd>Pichavaram</dd></div>
-            <div><dt>Intervention Type</dt><dd>Mangrove Restoration</dd></div>
-            <div><dt>Implementing Agency</dt><dd>TN Forest Department</dd></div>
-            <div><dt>Total Area</dt><dd>250 ha</dd></div>
-            <div><dt>Last Updated</dt><dd>12 Sep 2026, 04:30 PM</dd></div>
-          </dl>
-          <div className="project-actions">
-            <a className="btn-ghost small" href="/projects/NCM-MG-2026-00142">View Details</a>
-            <button className="btn-primary small" type="button" onClick={focusProject}>View on Map</button>
+        {card ? (
+          <>
+            <div className="project-photo">
+              <img src={card.image} alt="" />
+              <span>{card.status}</span>
+            </div>
+            <div className="project-body">
+              <h3>Project / Intervention Details</h3>
+              <strong>{card.title}</strong>
+              <p className="project-id">{card.code}</p>
+              <dl>
+                <div><dt>State / UT</dt><dd>{card.state}</dd></div>
+                <div><dt>District</dt><dd>{card.district}</dd></div>
+                <div><dt>Location</dt><dd>{card.location}</dd></div>
+                <div><dt>Intervention Type</dt><dd>{card.interventionType}</dd></div>
+                <div><dt>Implementing Agency</dt><dd>{card.agency}</dd></div>
+                <div><dt>Total Area</dt><dd>{card.area}</dd></div>
+                <div><dt>Last Updated</dt><dd>{card.updated}</dd></div>
+              </dl>
+              <div className="project-actions">
+                <a className="btn-ghost small" href={`/projects/${card.id}`}>View Details</a>
+                <button className="btn-primary small" type="button" onClick={focusProject}>View on Map</button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="project-body">
+            <h3>Project / Intervention Details</h3>
+            <p className="project-id">No project matches these filters.</p>
           </div>
-        </div>
+        )}
       </article>
     </div>
   );
