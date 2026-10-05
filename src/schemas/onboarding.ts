@@ -100,6 +100,7 @@ export const emptyDraft = (): OnboardingDraft => ({
   fullName: "",
   designation: "",
   email: "",
+  mobileNumber: "",
   preferredLanguage: "",
   organizationType: "",
   organizationName: "",

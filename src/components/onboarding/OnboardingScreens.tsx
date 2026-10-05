@@ -157,8 +157,8 @@ export function ConfirmationStep() {
           <p className="card-copy">Please review your details before completing the onboarding process. you can go back and make changes if needed.</p>
           {submitError ? <p className="form-error" role="alert">{submitError}</p> : null}
           <div className="review-grid">
-            <ReviewCard variant="personal" title="Your Details" editHref="/onboarding" fields={personalDetailsSchema.fields} draft={draft} />
-            <ReviewCard variant="organization" title="Organization & Role" editHref="/onboarding/organization" fields={organizationSchema.fields} draft={draft} />
+            <ReviewCard variant="personal" title="Your Details" editHref="/onboarding" fields={personalDetailsSchema.fields.flatMap((field) => field.name === "email" ? [field, { name: "mobileNumber", label: "Mobile Number", type: "text" }] : [field])} draft={draft} />
+            <ReviewCard variant="organization" title="Organization & Role" editHref="/onboarding/organization" fields={organizationSchema.fields.filter((field) => field.name !== "department")} draft={draft} />
           </div>
           <aside className="review-notice">
             <img src="/images/exclamation_icon.svg" alt="" />

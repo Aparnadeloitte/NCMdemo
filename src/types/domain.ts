@@ -10,6 +10,7 @@ export type OnboardingDraft = {
   fullName: string;
   designation: string;
   email: string;
+  mobileNumber: string;
   preferredLanguage: string;
   organizationType: string;
   organizationName: string;
