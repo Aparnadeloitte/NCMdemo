@@ -22,6 +22,17 @@ export const languages: FieldOption[] = [
   { label: "Gujarati", value: "gu" },
 ];
 
+export const departmentOrganizations: FieldOption[] = [
+  { label: "Ministry of Environment, Forest and Climate Change", value: "moefcc" },
+  { label: "National Centre for Sustainable Coastal Management", value: "ncscm" },
+  { label: "Society of Integrated Coastal Management", value: "sicom" },
+  { label: "State Environment Department", value: "state-environment" },
+  { label: "State Forest Department", value: "state-forest" },
+  { label: "Central Marine Fisheries Research Institute", value: "cmfri" },
+  { label: "National Institute of Oceanography", value: "nio" },
+  { label: "Wildlife Institute of India", value: "wii" },
+];
+
 export const organizationTypes: FieldOption[] = [
   { label: "Ministry / MoEFCC", value: "ministry" },
   { label: "State / UT Department", value: "state" },

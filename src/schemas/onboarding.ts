@@ -1,4 +1,4 @@
-import { districtsByState, designations, languages, organizationTypes, roles, states } from "@/data/options";
+import { departmentOrganizations, designations, districtsByState, languages, organizationTypes, roles, states } from "@/data/options";
 import type { FormSchema } from "@/schemas/form";
 import type { OnboardingDraft } from "@/types/domain";
 
@@ -63,10 +63,11 @@ export const organizationSchema: FormSchema = {
     },
     {
       name: "organizationName",
-      label: "Organization Name",
-      type: "text",
+      label: "Department / Organization",
+      type: "select",
       required: true,
-      placeholder: "Enter organization or department name",
+      placeholder: "Select",
+      options: departmentOrganizations,
     },
     {
       name: "district",
@@ -78,10 +79,11 @@ export const organizationSchema: FormSchema = {
     },
     {
       name: "department",
-      label: "Department / Division",
-      type: "text",
+      label: "Designation",
+      type: "select",
       required: true,
-      placeholder: "Enter department or division",
+      placeholder: "Select designation",
+      options: designations,
     },
     {
       name: "role",

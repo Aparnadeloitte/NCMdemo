@@ -245,3 +245,47 @@ th { color: #66788a; font-size: 12px; font-weight: 800; }
 @media (max-width: 860px) {
   .detail-hero, .activity-list li, .detail-grid, .wizard-layout, .photo-grid, .campaign-steps, .info-grid, .info-grid.compact { grid-template-columns: 1fr; }
 }
+
+.onboard { background: #f4f7fb; }
+.onboard-main { max-width: 1440px; margin: 0 auto; padding: 28px 40px 48px; }
+.onboard .onboard-top { align-items: center; justify-content: space-between; gap: 32px; margin-bottom: 20px; }
+.onboard .onboard-top h1 { font-size: 28px; font-weight: 800; line-height: 34px; letter-spacing: -0.02em; color: #0a2342; }
+.onboard .lede { max-width: 560px; margin-top: 6px; color: #66788a; font-size: 14px; font-weight: 500; line-height: 20px; }
+.onboard .stepper { flex: 1; align-items: center; max-width: 680px; margin: 0 0 0 auto; }
+.onboard .step { flex: 1 1 0; align-items: center; gap: 10px; padding-left: 0; }
+.onboard .step:first-child { flex: 0 1 auto; }
+.onboard .step strong { color: #0a2342; font-size: 14px; font-weight: 700; line-height: 18px; }
+.onboard .step small { color: #8b96a3; font-size: 12px; font-weight: 500; line-height: 16px; }
+.onboard .step.upcoming strong { color: #8b96a3; font-weight: 600; }
+.onboard .step-index { width: 36px; height: 36px; border-width: 1.5px; font-size: 13px; }
+.onboard .step-line { position: static; flex: 1 1 28px; width: auto; min-width: 20px; height: 2px; margin: 0 4px 0 0; }
+.onboard .form-card,
+.onboard .confirmation-panel { border: 1px solid #e6edf5; border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgba(16, 42, 80, 0.04); padding: 24px 28px 20px; }
+.onboard .form-card h2,
+.onboard .confirmation-title { font-size: 18px; font-weight: 800; line-height: 24px; letter-spacing: -0.02em; color: #0a2342; }
+.onboard .card-copy { margin-top: 4px; color: #8b96a3; font-size: 13px; font-weight: 500; line-height: 18px; }
+.onboard .form-grid { gap: 20px 28px; margin-top: 20px; }
+.onboard .field label { margin-bottom: 8px; color: #3c4b5c; font-size: 13px; font-weight: 600; line-height: 18px; }
+.onboard .req { color: #d92d20; }
+.onboard .field input,
+.onboard .field select { height: 44px; border: 1px solid #d7dee6; border-radius: 8px; padding: 0 14px; color: #0c2340; font-size: 14px; background-color: #fff; }
+.onboard .field input::placeholder { color: #a0acb8; }
+.onboard .field select { appearance: none; padding-right: 36px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%235d6b7b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+.onboard .form-actions { margin-top: 24px; gap: 12px; }
+.onboard .btn-primary,
+.onboard .btn-ghost { height: 40px; min-width: 112px; padding: 0 16px; border-radius: 8px; font-size: 14px; font-weight: 700; }
+.onboard .btn-primary { background: #0f3d91; }
+.onboard .btn-ghost { border-color: #d7dee6; color: #24384c; background: #fff; }
+.onboard .confirmation-actions { margin-top: 16px; }
+.onboard .review-grid { gap: 16px; margin-top: 16px; }
+.onboard .review-card { border-radius: 10px; border: 1px solid #e6edf5; box-shadow: none; padding: 0; }
+.onboard .review-head { padding: 10px 16px; }
+.onboard .review-card-personal .review-head { background: #e8f3ff; }
+.onboard .review-card-organization .review-head { background: #e7f7ef; }
+.onboard .review-head h2 { font-size: 14px; font-weight: 800; }
+.onboard .review-edit { color: #0f3d91; font-size: 13px; font-weight: 700; }
+.onboard .review-card dl { padding: 8px 16px 12px; }
+.onboard .review-card dl > div { min-height: 32px; }
+.onboard .review-card dt { color: #8b96a3; font-size: 13px; font-weight: 600; }
+.onboard .review-card dd { color: #0c2340; font-size: 13px; font-weight: 600; }
+.onboard .review-notice { margin-top: 16px; padding: 12px 14px; border-radius: 8px; background: #f4f0ff; color: #3c414f; font-size: 13px; line-height: 18px; }

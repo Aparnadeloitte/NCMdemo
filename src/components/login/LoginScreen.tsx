@@ -5,22 +5,6 @@ import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/http/client";
 import { saveSession } from "@/lib/session";
 import { signInWithDigiLocker, signInWithIdentifier } from "@/services/auth.service";
-import {
-  CleanerOceansIcon,
-  DigiLockerIcon,
-  HealthyCoastsIcon,
-  NationalEmblem,
-  NcmLogo,
-  ResilientCommunitiesIcon,
-  SustainableDevelopmentIcon,
-} from "./icons";
-
-const features = [
-  { label: "Healthy Coasts", Icon: HealthyCoastsIcon },
-  { label: "Resilient Communities", Icon: ResilientCommunitiesIcon },
-  { label: "Sustainable Development", Icon: SustainableDevelopmentIcon },
-  { label: "Cleaner Oceans", Icon: CleanerOceansIcon },
-];
 
 function isValidIdentifier(value: string) {
   const trimmed = value.trim();
@@ -84,59 +68,36 @@ export function LoginScreen() {
 
   return (
     <main className="login">
-      <img
-        className="login-bg"
-        src="/images/loginbg.svg"
-        alt=""
-      />
-      <div className="login-shade" />
+      <img className="login-bg" src="/images/loginbg.svg" alt="" />
 
       <section className="login-layout">
         <div className="hero-copy">
-          <div className="ministry">
-            <img src="/images/ministry of env.svg" alt="" />
-            {/* <NationalEmblem className="emblem" /> */}
-            {/* <div>
-              <p className="ministry-name">
-                Ministry of Environment,
-                <br />
-                Forest and Climate Change
-              </p>
-              <p className="ministry-gov">Government of India</p>
-            </div> */}
-          </div>
+          <img
+            className="ministry-lockup"
+            src="/images/ministry of env.svg"
+            alt="Ministry of Environment, Forest and Climate Change, Government of India"
+          />
 
           <h1>
-            National Costal
+            National Coastal
             <br />
             Mission (NCM) 2.0
           </h1>
           <p className="lede">
-            Monitoring, protecting and restoring India&apos;s costal ecosystems
+            Monitoring, protecting and restoring India&apos;s coastal ecosystems
             <br />
             for a sustainable future
           </p>
 
-          <ul className="features">
-            {/* {features.map(({ label, Icon }) => (
-              <li key={label}> */}
-                <span className="feature-icon">
-                   <img src="/images/healthy_coast.svg" alt="" />
-                  {/* <Icon /> */}
-                </span>
-                {/* <span>{label}</span>
-              </li>
-            ))} */}
-          </ul>
+          <img
+            className="feature-row"
+            src="/images/healthy_coast.svg"
+            alt="Healthy Coasts, Resilient Communities, Sustainable Development, Cleaner Oceans"
+          />
         </div>
 
         <section className="login-card" aria-labelledby="portal-title">
-          <img
-            className="login-card-bg"
-            src="/images/NCM2.0.svg"
-            alt=""
-          />
-          {/* <NcmLogo className="ncm-logo" /> */}
+          <img className="ncm-logo" src="/images/NCM2.0.svg" alt="" />
           <h2 id="portal-title">NCM 2.0</h2>
           <p className="portal-name">National Coastal Mission</p>
           <p className="portal-sub">MIS-MRV Portal</p>
@@ -169,7 +130,9 @@ export function LoginScreen() {
 
             <button className="btn-continue" type="submit" disabled={pending !== null}>
               {pending === "continue" ? "Continuing…" : "Continue"}
-              {pending === "continue" ? null : <span aria-hidden="true">→</span>}
+              {pending === "continue" ? null : (
+                <img src="/images/Arrow right.svg" alt="" />
+              )}
             </button>
           </form>
 
@@ -184,7 +147,6 @@ export function LoginScreen() {
             disabled={pending !== null}
           >
             <img src="/images/DigiLocker.svg" alt="" />
-            {/* <DigiLockerIcon /> */}
             {pending === "digilocker" ? "Connecting…" : "Sign in with DigiLocker"}
           </button>
 

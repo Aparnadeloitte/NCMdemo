@@ -36,7 +36,9 @@ input {
 .login {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
+  background: #7eb6df;
 }
 
 .login-bg {
@@ -45,157 +47,116 @@ input {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  pointer-events: none;
-}
-
-.login-shade {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 42%),
-    radial-gradient(circle at 78% 18%, rgba(255, 255, 255, 0.28), transparent 32%);
+  object-position: center center;
   pointer-events: none;
 }
 
 .login-layout {
   position: relative;
   z-index: 1;
+  width: min(1440px, 100%);
   min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
-  gap: 36px;
+  grid-template-columns: minmax(0, 1fr) 400px;
   align-items: center;
-  padding: 42px 56px 36px 64px;
+  gap: 48px;
+  padding: 36px 48px 32px 56px;
 }
 
 .hero-copy {
+  align-self: start;
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 86px);
-  max-width: 760px;
+  max-width: 640px;
+  padding-top: 4px;
   color: var(--title);
-  margin-bottom:auto;
 }
 
-.ministry {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.emblem {
-  width: 72px;
+.ministry-lockup {
+  display: block;
+  width: 271px;
   height: auto;
-  flex: none;
-}
-
-.ministry-name,
-.ministry-gov {
-  margin: 0;
-}
-
-.ministry-name {
-  font-size: 18px;
-  line-height: 1.25;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-.ministry-gov {
-  margin-top: 2px;
-  font-size: 15px;
-  font-weight: 500;
-  color: #24384d;
 }
 
 .hero-copy h1 {
-  margin: 54px 0 0;
-  max-width: 680px;
-  font-size: 58px;
-  line-height: 1.05;
+  margin: 52px 0 0;
+  max-width: 560px;
+  font-size: 46px;
+  line-height: 1.12;
   font-weight: 800;
-  letter-spacing: -0.035em;
-  color: var(--title);
+  letter-spacing: -0.03em;
+  color: #0a2342;
 }
 
-.lede {
-  margin: 22px 0 0;
-  max-width: 560px;
-  color: #4e5d6d;
-  font-size: 18px;
+.login .lede {
+  margin: 14px 0 0;
+  max-width: 460px;
+  color: #4a5d70;
+  font-size: 16px;
   line-height: 1.45;
   font-weight: 500;
 }
 
-.features {
-margin-right:auto;
-}
-
-.features li {
-  width: 112px;
-  text-align: center;
-  font-size: 13px;
-  line-height: 1.25;
-  font-weight: 700;
-  color: #16324d;
-}
-
-.feature-icon {
-  display: grid;
-  place-items: center;
-  height: 58px;
-  margin-bottom: 8px;
-}
-
-.feature-icon svg {
-  width: 56px;
-  height: 56px;
+.feature-row {
+  display: block;
+  width: 338px;
+  max-width: 100%;
+  height: auto;
+  margin-top: 40px;
 }
 
 .login-card {
-  background: var(--card);
-  border-radius: 22px;
-  box-shadow: 0 18px 50px rgba(16, 52, 92, 0.16);
-  padding: 32px 28px 22px;
+  width: 400px;
+  justify-self: end;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 18px 50px rgba(16, 42, 80, 0.14);
+  padding: 28px 28px 18px;
   text-align: center;
 }
 
 .ncm-logo {
-  width: 92px;
-  height: 92px;
+  display: block;
+  width: 112px;
+  height: auto;
+  margin: 0 auto;
 }
 
 .login-card h2 {
-  margin: 10px 0 0;
-  font-size: 28px;
+  margin: 12px 0 0;
+  font-size: 26px;
   line-height: 1.1;
+  font-weight: 800;
   letter-spacing: -0.03em;
-  color: var(--title);
+  color: #0a2342;
 }
 
 .portal-name {
-  margin: 4px 0 0;
-  font-size: 16px;
+  margin: 2px 0 0;
+  font-size: 15px;
   font-weight: 700;
-  color: #1c3348;
+  color: #1a3148;
 }
 
 .portal-sub {
   margin: 2px 0 0;
-  color: #7b8794;
+  color: #8b97a3;
   font-size: 13px;
   font-weight: 600;
 }
 
 .portal-org {
   margin: 10px 0 0;
-  color: #8b96a3;
+  color: #9aa3ad;
   font-size: 11px;
-  line-height: 1.45;
+  line-height: 1.4;
+  font-weight: 500;
 }
 
 .login-card form {
-  margin-top: 22px;
+  margin-top: 20px;
   text-align: left;
 }
 
@@ -209,13 +170,14 @@ margin-right:auto;
 
 .login-card input {
   width: 100%;
-  height: 46px;
+  height: 44px;
   border: 1px solid #d7dee6;
   border-radius: 8px;
   padding: 0 14px;
   color: var(--ink);
   background: #fff;
   outline: none;
+  font-size: 14px;
 }
 
 .login-card input::placeholder {
@@ -251,27 +213,29 @@ margin-right:auto;
   justify-content: center;
   gap: 8px;
   width: 100%;
-  height: 46px;
+  height: 44px;
   border-radius: 8px;
   cursor: pointer;
+  font-size: 15px;
 }
 
 .btn-continue {
   margin-top: 14px;
   border: 0;
-  background: var(--btn);
+  background: #0f3d91;
   color: #fff;
   font-weight: 700;
-  letter-spacing: 0.01em;
 }
 
 .btn-continue:hover:not(:disabled) {
   background: var(--btn-hover);
 }
 
-.btn-continue span {
-  font-size: 18px;
-  line-height: 1;
+.btn-continue img,
+.btn-digi img {
+  width: 20px;
+  height: 20px;
+  flex: none;
 }
 
 .divider {
@@ -298,11 +262,6 @@ margin-right:auto;
   background: #fff;
   color: #24384c;
   font-weight: 600;
-}
-
-.btn-digi svg {
-  width: 18px;
-  height: 18px;
 }
 
 .btn-digi:hover:not(:disabled) {
@@ -335,55 +294,56 @@ margin-right:auto;
 }
 
 .notice-icon {
-  width: 20pxpx;
-  height:20px;
-  margin-block:auto;
+  display: flex;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+}
+
+.notice-icon img {
+  width: 20px;
+  height: 20px;
 }
 
 @media (max-width: 1080px) {
+  .login {
+    overflow: auto;
+  }
+
   .login-layout {
     grid-template-columns: 1fr;
+    align-items: start;
     padding: 28px 20px 32px;
     gap: 28px;
   }
 
-  .hero-copy {
-    min-height: auto;
-  }
-
   .hero-copy h1 {
     margin-top: 28px;
-    font-size: 42px;
+    font-size: 40px;
   }
 
-  .features {
-    margin-top: 32px;
-    flex-wrap: wrap;
+  .feature-row {
+    margin-top: 28px;
   }
 
   .login-card {
-    max-width: 440px;
+    width: min(400px, 100%);
+    justify-self: start;
   }
 }
 
 @media (max-width: 640px) {
-  .ministry-name {
-    font-size: 15px;
+  .ministry-lockup {
+    width: 220px;
   }
 
   .hero-copy h1 {
-    font-size: 34px;
+    font-size: 32px;
   }
 
-  .lede br {
+  .lede br,
+  .hero-copy h1 br {
     display: none;
-  }
-
-  .features {
-    gap: 16px;
-  }
-
-  .features li {
-    width: calc(50% - 16px);
   }
 }
