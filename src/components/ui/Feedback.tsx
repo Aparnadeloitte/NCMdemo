@@ -7,6 +7,16 @@ export function LoadingState({ label = "Loading…" }: { label?: string }) {
   );
 }
 
+export function PageLoader({ label = "Loading…" }: { label?: string }) {
+  return (
+    <div className="page-loader" role="status">
+      <img className="page-loader-mark" src="/images/ministry%20of%20env.svg" alt="" />
+      <span className="page-loader-ring" aria-hidden="true" />
+      <p>{label}</p>
+    </div>
+  );
+}
+
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <div className="state-card state-error" role="alert">

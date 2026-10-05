@@ -10,6 +10,15 @@ import type { ListQuery, ModuleId, PortalRecord, RecordStatus } from "@/types/do
 
 const statuses: RecordStatus[] = ["active", "pending", "approved", "rejected", "draft", "completed"];
 
+type AiReviewResult = {
+  confidence: number;
+  risk: "Low" | "Medium" | "High";
+  recommendation: string;
+  summary: string;
+  checks: { label: string; score: number; status: "pass" | "warn" | "fail" }[];
+  flags: string[];
+};
+
 export function ModuleScreen({ moduleId }: { moduleId: ModuleId }) {
   if (moduleId === "map") {
     return (
@@ -30,6 +39,8 @@ function RecordScreen({ moduleId }: { moduleId: Exclude<ModuleId, "map"> }) {
   const [error, setError] = useState("");
   const [review, setReview] = useState<PortalRecord | null>(null);
   const [deciding, setDeciding] = useState(false);
+  const [aiReview, setAiReview] = useState<AiReviewResult | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -53,6 +64,34 @@ function RecordScreen({ moduleId }: { moduleId: Exclude<ModuleId, "map"> }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [review]);
+
+  function requestAiReview() {
+    if (!review) return;
+    setAiReview(null);
+    setAiLoading(true);
+    setTimeout(() => {
+      setAiReview({
+        confidence: 92,
+        risk: "Low",
+        recommendation: "Approve",
+        summary: `Documents and metadata for ${review.id} appear consistent with ${review.category.toLowerCase()} guidelines for ${review.state}. No red flags detected; recommend proceeding with standard review.`,
+        checks: [
+          { label: "Document completeness", score: 96, status: "pass" },
+          { label: "Regulatory compliance", score: 90, status: "pass" },
+          { label: "Data consistency", score: 88, status: "pass" },
+          { label: "Duplicate / fraud check", score: 97, status: "pass" },
+          { label: "Geospatial boundary match", score: 94, status: "pass" },
+          { label: "Signatory / authority verification", score: 91, status: "pass" },
+        ],
+        flags: [
+          `${review.organization} has a clean submission history in ${review.state}.`,
+          "No conflicting land-use claims found within a 2 km radius.",
+          "Submission filed within the expected review window.",
+        ],
+      });
+      setAiLoading(false);
+    }, 900);
+  }
 
   async function decide(decision: "approved" | "rejected") {
     if (!review) return;
@@ -113,7 +152,7 @@ function RecordScreen({ moduleId }: { moduleId: Exclude<ModuleId, "map"> }) {
                     key: "action",
                     header: "Action",
                     render: (row: PortalRecord) => row.status === "pending"
-                      ? <button className="btn-ghost small" type="button" onClick={() => setReview(row)}>Review</button>
+                      ? <button className="btn-ghost small" type="button" onClick={() => { setReview(row); setAiReview(null); }}>Review</button>
                       : "—",
                   }]
                 : []),
@@ -133,6 +172,35 @@ function RecordScreen({ moduleId }: { moduleId: Exclude<ModuleId, "map"> }) {
               <button className="btn-ghost" type="button" disabled={deciding} onClick={() => decide("rejected")}>Reject</button>
               <button className="btn-primary" type="button" disabled={deciding} onClick={() => decide("approved")}>{deciding ? "Saving…" : "Approve"}</button>
             </div>
+            <div className="ai-review-actions">
+              <button className="btn-ghost small" type="button" disabled={aiLoading} onClick={requestAiReview}>{aiLoading ? "Reviewing…" : "AI Review"}</button>
+            </div>
+            {aiReview ? (
+              <div className="ai-review-result">
+                <div className="ai-review-head">
+                  <strong>AI Review</strong>
+                  <span className="ai-review-score">{aiReview.confidence}% confidence</span>
+                </div>
+                <div className="ai-review-meta">
+                  <span className={`ai-risk ai-risk-${aiReview.risk.toLowerCase()}`}>Risk: {aiReview.risk}</span>
+                  <span className="ai-recommendation">Recommendation: {aiReview.recommendation}</span>
+                </div>
+                <p>{aiReview.summary}</p>
+                <ul className="ai-review-checks">
+                  {aiReview.checks.map((check) => (
+                    <li key={check.label} className={`ai-check-${check.status}`}>
+                      <span>{check.label}</span>
+                      <strong>{check.score}%</strong>
+                    </li>
+                  ))}
+                </ul>
+                {aiReview.flags.length ? (
+                  <ul className="ai-review-flags">
+                    {aiReview.flags.map((flag) => <li key={flag}>{flag}</li>)}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
