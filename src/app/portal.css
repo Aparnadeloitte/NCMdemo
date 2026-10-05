@@ -39,7 +39,7 @@
 .page-head h1, .onboard-top h1, .form-card h2, .panel h2 { margin: 0; color: var(--title); letter-spacing: -0.03em; }
 .page-head h1, .onboard-top h1 { font-size: 32px; line-height: 1.15; }
 .page-head p, .lede, .card-copy, .panel header p { margin: 6px 0 0; color: #66788a; font-size: 14px; line-height: 1.45; }
-.onboard-top { display: flex; gap: 28px; align-items: flex-start; margin-bottom: 22px; }
+.onboard-top { display: flex; gap: 28px; align-items: flex-start; }
 .eyebrow { display: inline-flex; align-items: center; justify-content: center; width: 136px; height: 36px; gap: 8px; margin: 0 0 8px; padding: 8px 16px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255, 255, 255, 1); color: rgba(60, 65, 79, 1); font-family: var(--font-inter), sans-serif; font-size: 11px; font-weight: 700; line-height: 16px; letter-spacing: 0; text-align: center; opacity: 1; }
 .stepper { display: flex; flex: 1; justify-content: space-between; gap: 0; margin: 8px 0 0; padding: 0; list-style: none; }
 .step { position: relative; display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; padding-left: 18px; }
@@ -55,7 +55,9 @@
 .step.current .step-line, .step.done .step-line { background: #4a2bc2; }
 .form-card, .panel, .state-card, .kpi, .welcome { background: #fff; border: 1px solid #e6edf5; border-radius: 16px; box-shadow: 0 8px 28px rgba(16,52,92,.04); }
 .form-card, .panel, .state-card { padding: 22px; }
-.form-card + .form-card, .panel, .kpi-grid, .dash-grid, .filters { margin-top:0px; }
+.form-card + .form-card { margin-top: 18px; }
+.page { display: flex; flex-direction: column; gap: 20px; }
+.page-head { margin-bottom: 4px; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 22px; margin-top: 18px; }
 .field label, .field > span { display: block; margin-bottom: 8px; color: #3c4b5c; font-size: 13px; font-weight: 700; }
 .req { color: var(--danger); }
@@ -100,7 +102,7 @@
 .review-notice { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 12px; border-radius: 8px; background: #f2f1ff; color: #3c414f; font-size: 12px; line-height: 1.4; }
 .review-notice img { width: 18px; height: 18px; flex: none; }
 .review-notice p { margin: 0; }
-.welcome { margin: 16px 0 0; padding: 12px 14px; color: var(--ok); font-size: 14px; }
+.welcome { margin: 0; padding: 12px 14px; color: var(--ok); font-size: 14px; }
 .kpi-grid, .dash-grid { display: grid; gap: 16px; }
 .kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .kpi { display: flex; gap: 12px; align-items: center; padding: 16px; }
