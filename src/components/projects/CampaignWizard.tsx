@@ -234,7 +234,7 @@ export function CampaignWizard({ initialId }: { initialId?: string }) {
                   {(draft.photos.length ? draft.photos : ["Mangrove Plantation area", "Mangrove Plantation area", "Mangrove Plantation area", "Mangrove Plantation area"]).map((photo, index) => (
                     <li key={`${photo}-${index}`}>
                       <div className="evidence-photo">
-                        <img src="/images/healthy_coast.svg" alt="" />
+                        <img src="/images/activity-tree.jpg" alt="" />
                         <button
                           type="button"
                           aria-label={`Remove ${photo}`}
