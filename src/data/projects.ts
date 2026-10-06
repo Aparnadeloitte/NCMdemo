@@ -176,9 +176,9 @@ export const physicalRows = [
 ];
 
 export const financialRows = [
-  { component: "Plantation & Maintenance", unit: "Hectares", budget: "100", spent: "40" },
-  { component: "Community Engagement", unit: "%", budget: "100", spent: "40" },
-  { component: "Monitoring & Assessment", unit: "Nos.", budget: "100", spent: "40" },
+  { component: "Plantation & Maintenance", unit: "Hectares", budget: "100", spent: "60" },
+  { component: "Community Engagement", unit: "%", budget: "100", spent: "60" },
+  { component: "Monitoring & Assessment", unit: "Nos.", budget: "100", spent: "60" },
 ];
 
 export const reportingPeriods = [

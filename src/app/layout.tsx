@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Inter } from "next/font/google";
+import { Inter, Jost } from "next/font/google";
 import "./globals.css";
 import "./portal.css";
 
@@ -8,6 +8,12 @@ const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-inter",
+});
+
+const jost = Jost({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-jost",
 });
 
 export const metadata: Metadata = {
@@ -19,7 +25,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} ${inter.variable}`}>{children}</body>
+      <body className={`${inter.className} ${inter.variable} ${jost.variable}`}>{children}</body>
     </html>
   );
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/ui/Feedback";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/Feedback";
 import { financialRows, physicalRows, reportingPeriodLabel, reportingPeriods, seedProjects } from "@/data/projects";
 import { getProject, readCampaignDraft, saveCampaignDraft, submitCampaign } from "@/services/projects.service";
 import type { CampaignDraft, NcmProject } from "@/types/domain";
@@ -75,7 +75,7 @@ export function CampaignWizard({ initialId }: { initialId?: string }) {
       <header className="page-head">
         <div>
           <h1>Submit Campaign Data</h1>
-          <p>Enter campaign, financial, and evidence details for the selected project and reporting period.</p>
+          <p>Enter progress, financial, KPI and evidence details for the selected campaign and reporting period.</p>
         </div>
       </header>
       <ol className="campaign-steps" aria-label="Campaign progress">
@@ -84,24 +84,36 @@ export function CampaignWizard({ initialId }: { initialId?: string }) {
           return (
             <li key={item.id} className={`step ${state}`}>
               <span className="step-index">{item.id < step ? "✓" : String(item.id).padStart(2, "0")}</span>
-              <span><strong>{item.label}</strong><small>{item.hint}</small></span>
+              <span className="campaign-step-copy">
+                <span className="campaign-step-heading">
+                  <strong>{item.label}</strong>
+                  {item.id < steps.length ? <span className="campaign-step-line" aria-hidden="true" /> : null}
+                </span>
+                <small>{item.hint}</small>
+              </span>
             </li>
           );
         })}
       </ol>
       <div className="wizard-layout">
-        <section className="panel">
-          {step === 1 ? (
-            <>
-              <label className="field">
-                <span>Campaign</span>
-                <select value={draft.campaignId} onChange={(event) => void persist({ ...draft, campaignId: event.target.value })}>
-                  {seedProjects.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
-                </select>
-              </label>
-              <div className="form-grid">
+        {step === 1 ? (
+          <>
+            <section className="panel campaign-section campaign-details">
+              <header>
+                <h2>1. Campaign Details</h2>
+                <p>Select the campaign and reporting period</p>
+              </header>
+              <div className="campaign-details-grid">
+                <label className="field campaign-field">
+                  <span>Campaign</span>
+                  <CampaignPicker
+                    project={project}
+                    value={draft.campaignId}
+                    onChange={(campaignId) => void persist({ ...draft, campaignId })}
+                  />
+                </label>
                 <label className="field">
-                  <span>Reporting period</span>
+                  <span>Reporting Period</span>
                   <select
                     value={reportingPeriodLabel(draft.reportingFrom, draft.reportingTo)}
                     onChange={(event) => {
@@ -115,14 +127,19 @@ export function CampaignWizard({ initialId }: { initialId?: string }) {
                   </select>
                 </label>
                 <label className="field">
-                  <span>Reporting type</span>
+                  <span>Reporting Type</span>
                   <select value={draft.reportingType} onChange={(event) => void persist({ ...draft, reportingType: event.target.value })}>
                     <option>Monthly</option>
                     <option>Quarterly</option>
                   </select>
                 </label>
               </div>
-              <h2>Physical progress</h2>
+            </section>
+            <section className="panel campaign-section progress-section">
+              <header>
+                <h2>1. Physical Progress</h2>
+                <p>Update the progress of key activities / Milestone for this reporting period.</p>
+              </header>
               <ProgressTable
                 rows={physicalRows.map((row, index) => ({ ...row, current: draft.physical[index] ?? "" }))}
                 onChange={(index, value) => {
@@ -131,11 +148,39 @@ export function CampaignWizard({ initialId }: { initialId?: string }) {
                   void persist({ ...draft, physical });
                 }}
               />
-            </>
-          ) : null}
-          {step === 2 ? (
-            <>
-              <h2>Financial & KPI Data</h2>
+            </section>
+          </>
+        ) : null}
+        {step === 2 ? (
+          <>
+            <section className="panel campaign-section financial-campaign-section">
+              <div className="campaign-details-grid campaign-summary-grid">
+                <label className="field campaign-field">
+                  <span>Campaign</span>
+                  <CampaignPicker
+                    project={project}
+                    value={draft.campaignId}
+                    onChange={(campaignId) => void persist({ ...draft, campaignId })}
+                  />
+                </label>
+              </div>
+            </section>
+            <section className="panel campaign-section budget-summary-section">
+              <header><h2>Budget Summary (₹ in Lakh)</h2></header>
+              <div className="budget-summary-grid">
+                <BudgetMetric label="Total Sanctioned" value="350.00" />
+                <BudgetMetric label="Expenditure till Aug 2026" value="235.00" />
+                <BudgetMetric label="This Period Expenditure" value="30.00" />
+                <BudgetMetric label="Total Expenditure (till Sept 2026)" value="265.00" />
+                <BudgetMetric label="Balance" value="85.00" />
+                <BudgetMetric label="Utilization" value="76%" />
+              </div>
+            </section>
+            <section className="panel campaign-section financial-progress-section">
+              <header>
+                <h2>Financial Progress</h2>
+                <p>Enter the expenditure details for this reporting period.</p>
+              </header>
               <ProgressTable
                 financial
                 rows={financialRows.map((row, index) => ({ activity: row.component, detail: "", unit: row.unit, target: row.budget, cumulative: row.spent, current: draft.financial[index] ?? "" }))}
@@ -145,56 +190,101 @@ export function CampaignWizard({ initialId }: { initialId?: string }) {
                   void persist({ ...draft, financial });
                 }}
               />
-            </>
-          ) : null}
-          {step === 3 ? (
-            <>
-              <h2>Geotagged photos</h2>
-              <label className="upload evidence-upload">
-                <img src="/images/UploadSimple.svg" alt="" />
-                <span><strong>Drag and drop files here or Choose file</strong><small>Add geotagged photos with location and timestamp.</small></span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(event) => {
-                    const names = Array.from(event.target.files ?? []).map((file) => file.name);
-                    void persist({ ...draft, photos: [...draft.photos, ...names] });
-                  }}
-                />
-              </label>
-              <ul className="photo-grid">
-                {(draft.photos.length ? draft.photos : ["Mangrove Plantation area", "Mangrove Plantation view", "Mangrove Plantation site", "Mangrove Restoration area"]).map((photo) => (
-                  <li key={photo}>
-                    <img src="/images/healthy_coast.svg" alt="" />
-                    <p>{photo}</p>
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : null}
-          {error ? <ErrorState message={error} /> : null}
-          <div className="form-actions">
-            {step > 1 ? <button className="btn-ghost" type="button" onClick={() => setStep((value) => value - 1)}>Back</button> : <Link className="btn-ghost" href="/projects">Cancel</Link>}
-            {step < 3
-              ? <button className="btn-primary" type="button" disabled={pending} onClick={() => void nextStep()}>{pending ? "Saving…" : "Next"}</button>
-              : <button className="btn-primary" type="button" disabled={pending} onClick={() => void finish()}>{pending ? "Submitting…" : "Submit"}</button>}
+            </section>
+          </>
+        ) : null}
+        {step === 3 ? (
+          <div className="evidence-layout">
+            <div className="evidence-main">
+              <section className="panel campaign-section evidence-campaign-section">
+                <div className="campaign-details-grid campaign-summary-grid">
+                  <label className="field campaign-field">
+                    <span>Campaign</span>
+                    <CampaignPicker
+                      project={project}
+                      value={draft.campaignId}
+                      onChange={(campaignId) => void persist({ ...draft, campaignId })}
+                    />
+                  </label>
+                </div>
+              </section>
+              <section className="panel campaign-section evidence-section">
+                <header>
+                  <h2>Geo-tagged Photos</h2>
+                  <p>Upload field photos to provide evidence of activities carried out during this reporting period.</p>
+                </header>
+                <label className="upload evidence-upload">
+                  <img src="/images/UploadSimple.svg" alt="" />
+                  <span>
+                    <strong>Drag and drop file here or <span>Choose file</span></strong>
+                    <small>Files supported: PNG, JPEG. Max file size - 5MB</small>
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    multiple
+                    onChange={(event) => {
+                      const names = Array.from(event.target.files ?? []).map((file) => file.name);
+                      void persist({ ...draft, photos: [...draft.photos, ...names] });
+                    }}
+                  />
+                </label>
+                <p className="evidence-note"><span aria-hidden="true">i</span>Photos should be geo-tagged with location and timestamp.</p>
+                <ul className="photo-grid evidence-photo-grid">
+                  {(draft.photos.length ? draft.photos : ["Mangrove Plantation area", "Mangrove Plantation area", "Mangrove Plantation area", "Mangrove Plantation area"]).map((photo, index) => (
+                    <li key={`${photo}-${index}`}>
+                      <div className="evidence-photo">
+                        <img src="/images/healthy_coast.svg" alt="" />
+                        <button
+                          type="button"
+                          aria-label={`Remove ${photo}`}
+                          onClick={() => {
+                            const currentPhotos = draft.photos.length
+                              ? draft.photos
+                              : ["Mangrove Plantation area", "Mangrove Plantation area", "Mangrove Plantation area", "Mangrove Plantation area"];
+                            void persist({ ...draft, photos: currentPhotos.filter((_, photoIndex) => photoIndex !== index) });
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <strong>{photo}</strong>
+                      <small>12 Sep 2026, {["10:30 AM", "10:20 AM", "11:30 AM", "10:10 AM"][index % 4]}</small>
+                      <small>{project.latitude.toFixed(4)}° N, {project.longitude.toFixed(4)}° E</small>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </div>
+            <aside className="panel evidence-project-card">
+              <h2>Project / Intervention Details</h2>
+              <img className="evidence-project-image" src={project.image} alt="" />
+              <div className="evidence-project-title">
+                <div>
+                  <strong>{project.title}</strong>
+                  <small>{project.campaignCode}</small>
+                </div>
+                <span className="badge badge-ongoing">{project.status}</span>
+              </div>
+              <dl className="evidence-project-details">
+                <div><dt>State / UT</dt><dd>{project.state}</dd></div>
+                <div><dt>District</dt><dd>{project.district}</dd></div>
+                <div><dt>Location</dt><dd>{project.location}</dd></div>
+                <div><dt>Intervention Type</dt><dd>{project.interventionType}</dd></div>
+                <div><dt>Implementing Agency</dt><dd>{project.agency}</dd></div>
+                <div><dt>Total Area</dt><dd>{project.area}</dd></div>
+                <div><dt>Last Updated</dt><dd>{project.updated}</dd></div>
+              </dl>
+            </aside>
           </div>
-        </section>
-        <aside className="panel wizard-card">
-          <h2>Project / Intervention Details</h2>
-          <img className="wizard-photo" src={project.image} alt="" />
-          <strong>{project.title}</strong>
-          <StatusBadge status={project.status} />
-          <dl>
-            <div><dt>State / UT</dt><dd>{project.state}</dd></div>
-            <div><dt>District</dt><dd>{project.district}</dd></div>
-            <div><dt>Location</dt><dd>{project.location}</dd></div>
-            <div><dt>Intervention Type</dt><dd>{project.interventionType}</dd></div>
-            <div><dt>Implementing Agency</dt><dd>{project.agency}</dd></div>
-            <div><dt>Last Updated</dt><dd>{project.updated}</dd></div>
-          </dl>
-        </aside>
+        ) : null}
+        {error ? <ErrorState message={error} /> : null}
+        <div className="form-actions campaign-actions">
+          {step > 1 ? <button className="btn-ghost" type="button" onClick={() => setStep((value) => value - 1)}>Back</button> : <Link className="btn-ghost" href="/projects">Back</Link>}
+          {step < 3
+            ? <button className="btn-primary" type="button" disabled={pending} onClick={() => void nextStep()}>{pending ? "Saving…" : <>Next <span aria-hidden="true">→</span></>}</button>
+            : <button className="btn-primary" type="button" disabled={pending} onClick={() => void finish()}>{pending ? "Submitting…" : "Submit"}</button>}
+        </div>
       </div>
       {receipt ? (
         <div className="modal-root">
@@ -213,6 +303,38 @@ export function CampaignWizard({ initialId }: { initialId?: string }) {
   );
 }
 
+function CampaignPicker({
+  project,
+  value,
+  onChange,
+}: {
+  project: NcmProject;
+  value: string;
+  onChange: (campaignId: string) => void;
+}) {
+  return (
+    <span className="campaign-picker">
+      <img src={project.image} alt="" />
+      <span className="campaign-picker-copy">
+        <select value={value} onChange={(event) => onChange(event.target.value)}>
+          {seedProjects.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+        </select>
+        <small>Campaign ID: {project.campaignCode} | {project.state} | {project.district}</small>
+      </span>
+      <span className="campaign-approved">Approved Campaign</span>
+    </span>
+  );
+}
+
+function BudgetMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="budget-metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
 function ProgressTable({
   rows,
   onChange,
@@ -224,31 +346,56 @@ function ProgressTable({
 }) {
   if (!rows.length) return <EmptyState title="No rows" message="No progress rows are available." />;
   return (
-    <div className="table-wrap">
+    <div className={`table-wrap campaign-progress-table${financial ? " financial-progress-table" : ""}`}>
       <table>
         <thead>
-          <tr>
-            <th>{financial ? "Component" : "Activity"}</th>
-            {financial ? null : <th>Detail</th>}
-            <th>Unit</th>
-            <th>{financial ? "Budget" : "Target"}</th>
-            <th>{financial ? "Spent" : "Cumulative"}</th>
-            <th>Current month</th>
-          </tr>
+          {financial ? (
+            <tr>
+              <th>Component / Head</th>
+              <th>Sanctioned Budget<br />(₹ in Lakh)</th>
+              <th>Expenditure<br />till Aug 2026</th>
+              <th>This Period<br />(Sept 2026)</th>
+              <th>Total</th>
+              <th>% Utilization</th>
+            </tr>
+          ) : (
+            <tr>
+              <th>Activity / Milestone</th>
+              <th>Unit</th>
+              <th>Target<br />(FY 2026-27)</th>
+              <th>Cumulative<br />Aug 2026</th>
+              <th>This Period<br />(Sept 2026)</th>
+              <th>Total Progress</th>
+            </tr>
+          )}
         </thead>
         <tbody>
-          {rows.map((row, index) => (
-            <tr key={`${row.activity}-${index}`}>
-              <td>{row.activity}</td>
-              {financial ? null : <td>{row.detail}</td>}
-              <td>{row.unit}</td>
-              <td>{row.target}</td>
-              <td>{row.cumulative}</td>
-              <td>
-                <input className="cell-input" value={row.current} onChange={(event) => onChange(index, event.target.value)} aria-label={`${row.activity} current month`} />
-              </td>
-            </tr>
-          ))}
+          {rows.map((row, index) => {
+            const total = Number(row.cumulative || 0) + Number(row.current || 0);
+            const percentage = Number(row.target) ? Math.round((total / Number(row.target)) * 100) : 0;
+            return (
+              <tr key={`${row.activity}-${index}`}>
+                <td>
+                  <span className="campaign-activity">
+                    <img src="/images/coast.svg" alt="" />
+                    <span><strong>{row.activity}</strong>{row.detail ? <small>{row.detail}</small> : null}</span>
+                  </span>
+                </td>
+                {financial ? null : <td>{row.unit}</td>}
+                <td>{row.target}</td>
+                <td>{row.cumulative}</td>
+                <td>
+                  <input className="cell-input" value={row.current} onChange={(event) => onChange(index, event.target.value)} aria-label={`${row.activity} current month`} />
+                </td>
+                {financial ? (
+                  <>
+                    <td>{total}</td>
+                    <td className="total-progress">{percentage}%</td>
+                  </>
+                ) : <td className="total-progress">{total} ({percentage}%)</td>}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

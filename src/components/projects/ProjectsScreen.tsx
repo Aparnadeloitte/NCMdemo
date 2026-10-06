@@ -74,13 +74,31 @@ export function ProjectsScreen() {
       {!rows && !error ? <LoadingState label="Loading projects…" /> : null}
       {rows && rows.length === 0 ? <EmptyState title="No projects found" message="Try a different search, status or state." /> : null}
       {rows && rows.length > 0 ? (
-        <section className="panel">
+        <section className="panel projects-table">
           <DataTable
             rows={rows}
             rowKey={(row) => row.id}
             columns={[
               { key: "id", header: "Project ID", render: (row) => row.campaignCode },
-              { key: "title", header: "Title", render: (row) => <span className="project-title"><img src="/images/plant_icon.svg" alt="" />{row.title}</span> },
+              {
+                key: "title",
+                header: "Mix (%)",
+                render: (row) => {
+                  const titleSuffixes = [` — ${row.location}`, ` at ${row.location}`];
+                  const title = titleSuffixes.reduce(
+                    (currentTitle, suffix) => currentTitle.endsWith(suffix)
+                      ? currentTitle.slice(0, -suffix.length)
+                      : currentTitle,
+                    row.title,
+                  );
+                  return (
+                    <span className="project-title">
+                      <img src={row.image} alt="" />
+                      <span><strong>{title}</strong><small>at {row.location}</small></span>
+                    </span>
+                  );
+                },
+              },
               { key: "state", header: "State/UT", render: (row) => row.state },
               { key: "district", header: "District", render: (row) => row.district },
               { key: "type", header: "Intervention Type", render: (row) => row.interventionType },
