@@ -287,14 +287,16 @@ export function CampaignWizard({ initialId }: { initialId?: string }) {
         </div>
       </div>
       {receipt ? (
-        <div className="modal-root">
+        <div className="modal-root campaign-success-root">
           <button className="modal-backdrop" type="button" aria-label="Close dialog" onClick={() => router.push("/projects")} />
-          <div role="dialog" aria-modal="true" aria-labelledby="campaign-success" className="modal">
-            <h2 id="campaign-success">Campaign data submitted successfully!</h2>
-            <p>Your data for this reporting period has been submitted for verification.</p>
-            <p className="card-copy">Reference {receipt}</p>
-            <div className="form-actions">
-              <button className="btn-primary" type="button" onClick={() => router.push("/projects")}>Close</button>
+          <div role="dialog" aria-modal="true" aria-labelledby="campaign-success" className="modal campaign-success-modal">
+            <button className="campaign-success-close" type="button" aria-label="Close" onClick={() => router.push("/projects")}>×</button>
+            <div className="campaign-success-copy">
+              <h2 id="campaign-success">Campaign data submitted successfully!</h2>
+              <p>Your data for this reporting period has been submitted for verification.</p>
+            </div>
+            <div className="form-actions campaign-success-actions">
+              <button className="btn-primary" type="button" onClick={() => router.push("/projects")}>Okay</button>
             </div>
           </div>
         </div>
