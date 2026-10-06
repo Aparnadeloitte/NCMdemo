@@ -5,26 +5,59 @@ import type { CampaignDraft, ListQuery, ListResult, NcmProject, SubmissionReceip
 
 const delayMs = 320;
 const DRAFT_KEY = "ncm.campaign.draft";
-const STORE_KEY = "ncm.projects.store";
+const CREATED_PROJECTS_KEY = "ncm.projects.created";
 
 function wait(ms = delayMs) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function readStore(): NcmProject[] {
-  if (typeof window === "undefined") return [...seedProjects];
-  const raw = sessionStorage.getItem(STORE_KEY);
-  if (!raw) return [...seedProjects];
+function readCreatedProjects(): NcmProject[] {
+  if (typeof window === "undefined") return [];
+  const raw = localStorage.getItem(CREATED_PROJECTS_KEY);
+  if (!raw) return [];
   try {
-    const parsed = JSON.parse(raw) as NcmProject[];
-    return parsed.length ? parsed : [...seedProjects];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed as NcmProject[] : [];
   } catch {
-    return [...seedProjects];
+    return [];
   }
 }
 
-function writeStore(items: NcmProject[]) {
-  sessionStorage.setItem(STORE_KEY, JSON.stringify(items));
+function readStore(): NcmProject[] {
+  return [...readCreatedProjects(), ...seedProjects];
+}
+
+function writeCreatedProjects(items: NcmProject[]) {
+  localStorage.setItem(CREATED_PROJECTS_KEY, JSON.stringify(items));
+}
+
+function formatSubmissionTime(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${value("day")} ${value("month")} ${value("year")}, ${value("hour")}:${value("minute")} ${value("dayPeriod").toUpperCase()}`;
+}
+
+function nextProjectIdentity(projects: NcmProject[], source: NcmProject) {
+  const codeParts = source.campaignCode.split("/");
+  const prefix = codeParts.slice(0, -1).join("/");
+  const highestSequence = projects.reduce((highest, project) => {
+    if (!project.campaignCode.startsWith(`${prefix}/`)) return highest;
+    const sequence = Number(project.campaignCode.split("/").at(-1));
+    return Number.isFinite(sequence) ? Math.max(highest, sequence) : highest;
+  }, 0);
+  const sequence = String(highestSequence + 1).padStart(5, "0");
+  const campaignCode = `${prefix}/${sequence}`;
+  return {
+    campaignCode,
+    id: campaignCode.replaceAll("/", "-"),
+  };
 }
 
 export async function listProjects(query: ListQuery): Promise<ListResult<NcmProject>> {
@@ -83,9 +116,17 @@ export async function submitCampaign(draft: CampaignDraft): Promise<SubmissionRe
   sessionStorage.removeItem(DRAFT_KEY);
   const store = readStore();
   const source = store.find((item) => item.id === draft.campaignId) ?? store[0];
-  if (source) {
-    source.updated = "01 Oct 2026, 02:22 PM";
-    writeStore(store);
-  }
-  return { referenceId: `${draft.campaignId}-CMP-2026-09`, submittedAt: "01 Oct 2026, 02:22 PM" };
+  if (!source) throw new Error("A source campaign is required to create the project.");
+
+  const identity = nextProjectIdentity(store, source);
+  const submittedAt = formatSubmissionTime();
+  const createdProject: NcmProject = {
+    ...source,
+    ...identity,
+    updated: submittedAt,
+    activities: source.activities.map((activity) => ({ ...activity })),
+  };
+  writeCreatedProjects([createdProject, ...readCreatedProjects()]);
+
+  return { referenceId: `${identity.id}-CMP-2026-09`, submittedAt };
 }
