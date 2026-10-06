@@ -185,6 +185,89 @@ export type StateProjectProposal = {
   updated: string;
 };
 
+export type CentralLocationMode = "manual" | "map";
+
+export type CentralLocation = {
+  id: string;
+  mode: CentralLocationMode;
+  state: string;
+  district: string;
+  site: string;
+  polygon: [number, number][];
+};
+
+export type CentralActivity = {
+  id: string;
+  name: string;
+  description: string;
+  start: string;
+  end: string;
+  milestone: string;
+};
+
+export type CentralAgencyAssignment = {
+  id: string;
+  agencyId: string;
+  locationIds: string[];
+  activityIds: string[];
+};
+
+export type CentralKpi = {
+  id: string;
+  source: "standard" | "custom";
+  templateFile: string;
+  name: string;
+  unit: string;
+  baseline: string;
+  target: string;
+  frequency: string;
+  activityId: string;
+  evidence: string;
+};
+
+export type CentralProjectStatus = "draft" | "submitted" | "returned" | "approved" | "verified";
+
+export type CentralProject = {
+  id: string;
+  createdBy: string;
+  status: CentralProjectStatus;
+  returnNote: string;
+  name: string;
+  component: string;
+  description: string;
+  start: string;
+  end: string;
+  locations: CentralLocation[];
+  totalCost: string;
+  fundingSource: string;
+  sanctioned: string;
+  releaseDetails: string;
+  financialYear: string;
+  activities: CentralActivity[];
+  agencies: CentralAgencyAssignment[];
+  kpis: CentralKpi[];
+  updated: string;
+  published: boolean;
+};
+
+export type KpiReportStatus = "draft" | "submitted" | "approved" | "returned";
+
+export type KpiReport = {
+  id: string;
+  projectId: string;
+  kpiId: string;
+  locationId: string;
+  agencyId: string;
+  achievement: string;
+  remarks: string;
+  documents: string[];
+  photos: string[];
+  status: KpiReportStatus;
+  reviewNote: string;
+  updated: string;
+  history: { at: string; achievement: string; status: KpiReportStatus }[];
+};
+
 export type CampaignDraft = {
   campaignId: string;
   reportingFrom: string;

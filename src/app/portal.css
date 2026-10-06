@@ -62,6 +62,7 @@
 .req { color: var(--danger); }
 .field input, .field select, .field textarea, .search-field input, .filters select { width: 100%; border: 1px solid #d7dee6; border-radius: 8px; background: #fff; color: var(--ink); outline: none; }
 .field input, .field select, .search-field input, .filters select { height:36px; padding: 0 14px; }
+.field input[type="file"] { height: auto; padding: 8px 0; border: 0; background: transparent; box-shadow: none; }
 .field textarea { padding: 12px 14px; resize: vertical; }
 .field input:focus, .field select:focus, .field textarea:focus, .search-field input:focus, .filters select:focus, .icon-btn:focus-visible, .btn-primary:focus-visible, .btn-ghost:focus-visible, .nav-link:focus-visible { border-color: #8eadd8; box-shadow: 0 0 0 3px rgba(15,61,145,.12); }
 .field.has-error input, .field.has-error select, .field.has-error textarea { border-color: #e7b4ae; }
@@ -612,8 +613,19 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 .review-facts dd { margin: 0; font-size: 13px; font-weight: 700; text-align: right; }
 .doc-summary { margin: 8px 0 16px; padding-left: 18px; color: #24384c; font-size: 14px; }
 .modal h3 { margin: 8px 0; font-size: 15px; }
+.campaign-steps.steps-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.sketch-map { height: 280px; margin-top: 8px; border-radius: 10px; overflow: hidden; }
+.location-card, .agency-card { margin-top: 12px; padding: 14px; border: 1px solid #e6edf5; border-radius: 12px; }
+.check-grid { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0 12px; }
+.check-grid label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+.check-grid input, .choice-row input { width: auto; height: auto; padding: 0; border: 0; box-shadow: none; }
+.combo { position: relative; }
+.combo-list { position: absolute; z-index: 6; top: calc(100% - 2px); left: 0; right: 0; max-height: 220px; margin: 0; padding: 4px; overflow: auto; list-style: none; border: 1px solid #d7dee6; border-radius: 8px; background: #fff; box-shadow: 0 8px 24px rgba(12, 35, 64, .12); }
+.combo-list button { display: block; width: 100%; padding: 8px 10px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.combo-list button:hover, .combo-list button[aria-selected="true"] { background: #eef4fb; }
+.combo-empty { padding: 8px 10px; color: #8b96a3; font-size: 13px; }
 @media (max-width: 1100px) {
-  .campaign-steps.steps-4, .workflow, .doc-row, .review-facts { grid-template-columns: 1fr 1fr; }
+  .campaign-steps.steps-4, .campaign-steps.steps-5, .workflow, .doc-row, .review-facts { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 860px) {
   .campaign-steps.steps-4, .workflow, .doc-row, .review-facts, .proposal-actions { grid-template-columns: 1fr; }

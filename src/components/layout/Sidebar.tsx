@@ -17,16 +17,20 @@ const items = [
   { href: "/database", label: "Master Data", icon: "/images/Database_sidemenu.svg" },
 ];
 
+const roleItem: Record<string, { href: string; label: string; icon: string }[]> = {
+  "Central user": [{ href: "/central-projects", label: "Central Projects", icon: "/images/document_sidemenu.svg" }],
+  "Admin user": [
+    { href: "/central-review", label: "Project Review", icon: "/images/approvals_sidemenu.svg" },
+    { href: "/kpi-review", label: "KPI Review", icon: "/images/MRV Data_sidemenu.svg" },
+  ],
+  "State user": [{ href: "/central-projects", label: "Central Projects", icon: "/images/document_sidemenu.svg" }],
+  "Agency user": [{ href: "/my-projects", label: "My Projects", icon: "/images/project_sidemenu.svg" }],
+};
+
 export function Sidebar({ open, onClose, role }: { open: boolean; onClose: () => void; role?: string }) {
   const pathname = usePathname();
-  const nav = role === "Agency user"
-    ? [
-        items[0],
-        items[1],
-        { href: "/state-projects", label: "State Projects", icon: "/images/document_sidemenu.svg" },
-        ...items.slice(2),
-      ]
-    : items;
+  const extra = role ? roleItem[role] ?? [] : [];
+  const nav = [...items.slice(0, 4), ...extra, ...items.slice(4)];
   return (
     <>
       <button className={`sidebar-backdrop${open ? " show" : ""}`} type="button" aria-label="Close menu" onClick={onClose} />

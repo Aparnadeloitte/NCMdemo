@@ -46,6 +46,22 @@ export const directoryUsers: DirectoryUser[] = [
     nextStep: "dashboard",
     state: "Goa",
   },
+  {
+    userId: "usr-central-001",
+    name: "NCM Programme Cell",
+    identifier: "central@ncm.gov.in",
+    organization: "MoEFCC",
+    role: "Central user",
+    nextStep: "dashboard",
+  },
+  {
+    userId: "usr-admin-001",
+    name: "NCM Admin Cell",
+    identifier: "admin@ncm.gov.in",
+    organization: "MoEFCC",
+    role: "Admin user",
+    nextStep: "dashboard",
+  },
 ];
 
 export const digiLockerDemoUser: DirectoryUser = directoryUsers[0];

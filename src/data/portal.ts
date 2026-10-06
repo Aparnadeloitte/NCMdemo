@@ -56,6 +56,8 @@ const users: PortalRecord[] = [
   { id: "USR-208", title: "Coastal Research Unit", organization: "Implementing Agency", state: "Tamil Nadu", category: "Agency user", status: "pending", updated: "29 Aug 2026", owner: "agency@ncm.gov.in" },
   { id: "USR-221", title: "Odisha Coastal Cell", organization: "State/UT", state: "Odisha", category: "State user", status: "active", updated: "01 Oct 2026", owner: "state@ncm.gov.in" },
   { id: "USR-222", title: "Goa Coastal Cell", organization: "State/UT", state: "Goa", category: "State user", status: "active", updated: "06 Oct 2026", owner: "goa@ncm.gov.in" },
+  { id: "USR-301", title: "NCM Programme Cell", organization: "MoEFCC", state: "Delhi", category: "Central user", status: "active", updated: "06 Oct 2026", owner: "central@ncm.gov.in" },
+  { id: "USR-302", title: "NCM Admin Cell", organization: "MoEFCC", state: "Delhi", category: "Admin user", status: "active", updated: "06 Oct 2026", owner: "admin@ncm.gov.in" },
 ];
 
 export const recordsByModule: Record<Exclude<ModuleId, "map">, PortalRecord[]> = {
