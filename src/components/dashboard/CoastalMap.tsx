@@ -69,6 +69,7 @@ export function CoastalMap({ stateName = "", query = "", project = undefined }: 
   const groups = useRef<Partial<Record<LayerId, LayerGroup>>>({});
   const siteMarkers = useRef<Marker[]>([]);
   const [ready, setReady] = useState(false);
+  const [layersOpen, setLayersOpen] = useState(true);
   const [active, setActive] = useState<Record<LayerId, boolean>>(() =>
     Object.fromEntries(layers.map((layer) => [layer.id, layer.defaultOn])) as Record<LayerId, boolean>,
   );
@@ -237,27 +238,46 @@ export function CoastalMap({ stateName = "", query = "", project = undefined }: 
   return (
     <div className="figma-map">
       <div ref={host} className="figma-map-canvas" />
-      <aside className="map-layers" aria-label="Map layers">
-        <h3>Map Layers</h3>
-        {layers.map((layer) => (
-          <label key={layer.id}>
-            <input type="checkbox" checked={active[layer.id]} onChange={() => toggle(layer.id)} />
-            <span>{layer.label}</span>
-          </label>
-        ))}
-        <button type="button" onClick={clearAll}>Clear All</button>
+      <aside className={`map-layers${layersOpen ? "" : " is-collapsed"}`} aria-label="Map layers">
+        <header>
+          <h3>Map Layers</h3>
+          <button
+            type="button"
+            className="map-layers-toggle"
+            aria-expanded={layersOpen}
+            aria-label={layersOpen ? "Collapse map layers" : "Expand map layers"}
+            onClick={() => setLayersOpen((open) => !open)}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M3.5 10.5 8 6l4.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </header>
+        {layersOpen ? (
+          <>
+            {layers.map((layer) => (
+              <label key={layer.id}>
+                <input type="checkbox" checked={active[layer.id]} onChange={() => toggle(layer.id)} />
+                <span>{layer.label}</span>
+              </label>
+            ))}
+            <button type="button" className="map-layers-clear" onClick={clearAll}>Clear All</button>
+          </>
+        ) : null}
       </aside>
       <article className="project-card">
         {card ? (
           <>
-            <div className="project-photo">
-              <img src={card.image} alt="" />
-              <span>{card.status}</span>
-            </div>
             <div className="project-body">
               <h3>Project / Intervention Details</h3>
-              <strong>{card.title}</strong>
-              <p className="project-id">{card.code}</p>
+              <img className="project-banner" src="/images/activity-tree.jpg" alt="" />
+              <div className="project-heading">
+                <div>
+                  <strong>{card.title}</strong>
+                  <p className="project-id">{card.code}</p>
+                </div>
+                <span className="project-status">{card.status}</span>
+              </div>
               <dl>
                 <div><dt>State / UT</dt><dd>{card.state}</dd></div>
                 <div><dt>District</dt><dd>{card.district}</dd></div>

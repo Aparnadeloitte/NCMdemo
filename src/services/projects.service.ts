@@ -5,7 +5,7 @@ import type { CampaignDraft, ListQuery, ListResult, NcmProject, SubmissionReceip
 
 const delayMs = 320;
 const DRAFT_KEY = "ncm.campaign.draft";
-const STORE_KEY = "ncm.projects.store";
+const STORE_KEY = "ncm.projects.store.v2";
 
 function wait(ms = delayMs) {
   return new Promise((resolve) => setTimeout(resolve, ms));
