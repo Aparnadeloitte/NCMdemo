@@ -140,12 +140,16 @@ function Activities({ project }: { project: DashProject }) {
   );
 }
 
+const pageSize = 5;
+
 function Agencies({ project }: { project: DashProject }) {
+  const [page, setPage] = useState(1);
+  const visible = project.links.slice((page - 1) * pageSize, page * pageSize);
   return (
     <section className="panel projects-table">
       <header><h2>Implementation agencies</h2><p>Each agency is mapped to the locations and activities it carries out.</p></header>
       <DataTable
-        rows={project.links}
+        rows={visible}
         rowKey={(row) => `${row.agency}:${row.locationId}:${row.activity}`}
         columns={[
           { key: "agency", header: "Agency", render: (row) => row.agency },
@@ -153,13 +157,14 @@ function Agencies({ project }: { project: DashProject }) {
           { key: "activity", header: "Activity", render: (row) => row.activity },
         ]}
       />
+      <Pagination page={page} pageSize={pageSize} total={project.links.length} onPage={setPage} />
     </section>
   );
 }
 
 function Kpis({ project, page, onPage, open, onOpen }: { project: DashProject; page: number; onPage: (page: number) => void; open: DashKpi | null; onOpen: (id: string) => void }) {
   const rows = useMemo(() => project.kpis, [project]);
-  const visible = rows.slice((page - 1) * 8, page * 8);
+  const visible = rows.slice((page - 1) * pageSize, page * pageSize);
   return (
     <section className="panel projects-table">
       <header><h2>KPIs</h2><p>Open a KPI for its definition, history, evidence, remarks, and review.</p></header>
@@ -177,7 +182,7 @@ function Kpis({ project, page, onPage, open, onOpen }: { project: DashProject; p
           { key: "status", header: "Verification", render: (row) => <span className={`kdash-pill ${row.status.toLowerCase()}`}>{row.status}</span> },
         ]}
       />
-      <Pagination page={page} pageSize={8} total={rows.length} onPage={onPage} />
+      <Pagination page={page} pageSize={pageSize} total={rows.length} onPage={onPage} />
       {open ? <KpiDetail project={project} kpi={open} /> : null}
     </section>
   );
@@ -208,13 +213,15 @@ function KpiDetail({ project, kpi }: { project: DashProject; kpi: DashKpi }) {
 }
 
 function Documents({ project }: { project: DashProject }) {
+  const [page, setPage] = useState(1);
   const evidence = [...new Set(project.kpis.map((kpi) => kpi.evidence))].map((name) => ({ name, kind: "Evidence" as const, date: "02 Sep 2025" }));
   const rows = [...project.documents, ...evidence];
+  const visible = rows.slice((page - 1) * pageSize, page * pageSize);
   return (
     <section className="panel projects-table">
       <header><h2>Documents</h2><p>Project documents and KPI evidence.</p></header>
       <DataTable
-        rows={rows}
+        rows={visible}
         rowKey={(row) => `${row.kind}:${row.name}`}
         columns={[
           { key: "name", header: "Document", render: (row) => row.name },
@@ -222,6 +229,7 @@ function Documents({ project }: { project: DashProject }) {
           { key: "date", header: "Date", render: (row) => row.date },
         ]}
       />
+      <Pagination page={page} pageSize={pageSize} total={rows.length} onPage={setPage} />
     </section>
   );
 }
@@ -234,7 +242,7 @@ function Audit({ project, page, onPage }: { project: DashProject; page: number; 
     note: item.note,
   })));
   const rows = [...project.audit, ...kpiEvents];
-  const visible = rows.slice((page - 1) * 8, page * 8);
+  const visible = rows.slice((page - 1) * pageSize, page * pageSize);
   return (
     <section className="panel projects-table">
       <header><h2>Audit trail</h2><p>Submission, review, approval, and status changes for this project and its KPI reports.</p></header>
@@ -248,7 +256,7 @@ function Audit({ project, page, onPage }: { project: DashProject; page: number; 
           { key: "note", header: "Note", render: (row) => row.note },
         ]}
       />
-      <Pagination page={page} pageSize={8} total={rows.length} onPage={onPage} />
+      <Pagination page={page} pageSize={pageSize} total={rows.length} onPage={onPage} />
     </section>
   );
 }
