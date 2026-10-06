@@ -96,7 +96,10 @@ export function agencyById(id: string) {
 
 export function locationLabel(location: CentralLocation) {
   const place = [location.site, location.district, location.state].filter(Boolean).join(", ");
-  if (location.mode === "map") return `${place || "Mapped boundary"} · ${location.polygon.length} points`;
+  if (location.mode === "map") {
+    const totalPoints = location.polygon.reduce((sum, ring) => sum + ring.length, 0);
+    return `${place || "Mapped boundary"} · ${totalPoints} points`;
+  }
   return place || "Location";
 }
 

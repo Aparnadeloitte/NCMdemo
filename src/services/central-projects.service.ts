@@ -53,7 +53,8 @@ function stamp(iso = new Date().toISOString()) {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(date);
 }
 
-function centroid(points: [number, number][]) {
+function centroid(rings: [number, number][][]) {
+  const points = rings.flat();
   if (!points.length) return { latitude: 15.4, longitude: 73.95 };
   return {
     latitude: points.reduce((sum, point) => sum + point[0], 0) / points.length,
@@ -76,7 +77,7 @@ function toPortalProject(project: CentralProject): NcmProject {
     interventionType: project.component,
     agency: agency?.name || "Implementing Agency",
     area: (project.kpis ?? []).find((item) => item.target?.trim())?.target || "—",
-    polygonArea: location?.polygon?.length ? `${location.polygon.length} pts` : "—",
+    polygonArea: location?.polygon?.length ? `${location.polygon.reduce((sum, ring) => sum + ring.length, 0)} pts` : "—",
     status: "Ongoing",
     totalCost: project.totalCost,
     updated: stamp(),

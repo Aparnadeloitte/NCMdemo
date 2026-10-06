@@ -193,7 +193,7 @@ export type CentralLocation = {
   state: string;
   district: string;
   site: string;
-  polygon: [number, number][];
+  polygon: [number, number][][];
 };
 
 export type CentralActivity = {
