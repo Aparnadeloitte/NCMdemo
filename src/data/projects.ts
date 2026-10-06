@@ -1,9 +1,9 @@
 import type { CampaignDraft, DashboardKpi, NcmProject, ProjectActivity } from "@/types/domain";
 
 const pichavaramActivities: ProjectActivity[] = [
-  { id: "act-1", name: "Mangrove Plantation", detail: "Planting 100 ha of mangroves", image: "/images/healthy_coast.svg", costAdded: true, date: "20 Aug 2026" },
-  { id: "act-2", name: "Survival Monitoring", detail: "Tracking 100 ha of mangroves", image: "/images/healthy_coast.svg", costAdded: true, date: "20 Aug 2026" },
-  { id: "act-3", name: "Community Engagement", detail: "Community gathering at Pichavaram", image: "/images/healthy_coast.svg", costAdded: true, date: "20 Aug 2026" },
+  { id: "act-1", name: "Mangrove Plantation", detail: "Planting 100 ha of mangroves", image: "/images/activity-tree.jpg", costAdded: true, date: "20 Aug 2026" },
+  { id: "act-2", name: "Survival Monitoring", detail: "Monitoring planted saplings", image: "/images/activity-tree.jpg", costAdded: true, date: "20 Aug 2026" },
+  { id: "act-3", name: "Community Engagement", detail: "Awareness programs in local communities", image: "/images/activity-tree.jpg", costAdded: true, date: "20 Aug 2026" },
 ];
 
 function project(partial: NcmProject): NcmProject {

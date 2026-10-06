@@ -25,23 +25,29 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
   if (error) return <ErrorState message={error} onRetry={load} />;
   if (!project) return null;
 
+  const lat = `${project.latitude.toFixed(4)}° N`;
+  const lng = `${project.longitude.toFixed(4)}° E`;
+
   return (
     <div className="page project-detail">
       <Link className="back-link" href="/dashboard">Back to Dashboard</Link>
       <article className="detail-hero">
-        <img src={project.image} alt="" />
-        <div>
-          <h1>{project.title}</h1>
-          <p>{project.campaignCode} | {project.state} | {project.district}</p>
+        <div className="detail-hero-lead">
+          <img src="/images/activity-tree.jpg" alt="" />
+          <div className="detail-hero-copy">
+            <h1>{project.title}</h1>
+            <p>Campaign ID: {project.id} | {project.state} | {project.district}</p>
+          </div>
+          <StatusBadge status={project.status} />
         </div>
-        <StatusBadge status={project.status} />
-        <Link className="btn-primary small" href="/dashboard#coastal-map">View On Map</Link>
+        <Link className="btn-map" href="/dashboard#coastal-map">View On Map</Link>
       </article>
       <div className="detail-grid">
         <section className="panel">
           <h2>Campaign Information</h2>
-          <dl className="info-grid">
-            <div><dt>Program</dt><dd>{project.program}</dd></div>
+          <p className="detail-program">{project.program}</p>
+          <p className="detail-code">{project.campaignCode}</p>
+          <dl className="detail-rows">
             <div><dt>State / UT</dt><dd>{project.state}</dd></div>
             <div><dt>District</dt><dd>{project.district}</dd></div>
             <div><dt>Location</dt><dd>{project.location}</dd></div>
@@ -54,12 +60,12 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
           </dl>
         </section>
         <section className="panel location-panel">
-          <h2>Location Details</h2>
           <SiteMiniMap lat={project.latitude} lng={project.longitude} label={project.title} area={project.polygonArea} />
-          <dl className="info-grid compact">
-            <div><dt>Lat/Long</dt><dd>{project.latitude.toFixed(4)}°N, {project.longitude.toFixed(4)}°E</dd></div>
+          <dl className="detail-meta">
+            <div><dt>Longitude</dt><dd>{lng}</dd></div>
+            <div><dt>Latitude</dt><dd>{lat}</dd></div>
             <div><dt>Coastline</dt><dd>{project.coastline}</dd></div>
-            <div><dt>Tide</dt><dd>{project.tide}</dd></div>
+            <div><dt>State</dt><dd>{project.state}</dd></div>
           </dl>
         </section>
       </div>
@@ -73,8 +79,15 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
                 <strong>{activity.name}</strong>
                 <p>{activity.detail}</p>
               </div>
-              {activity.costAdded ? <span className="cost-pill">Cost added</span> : null}
-              <time>{activity.date}</time>
+              <div className="activity-meta">
+                {activity.costAdded ? <span className="cost-pill">Completed</span> : null}
+                <time>{activity.date}</time>
+              </div>
+              <span className="activity-chevron" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M6 3.5 10.5 8 6 12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
             </li>
           ))}
         </ul>
