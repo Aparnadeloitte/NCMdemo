@@ -194,6 +194,28 @@ export function KpiDashboardScreen() {
         ))}
       </section>
 
+      <section className="panel">
+        <header>
+          <div>
+            <h2>Map view</h2>
+            <p>Pins and site polygons. Select a location to open its project, activities, agencies, and KPI progress.</p>
+          </div>
+        </header>
+        <div className="kdash-filters">
+          <Filter label="State" value={lockedState || mapFilters.state} disabled={Boolean(lockedState)} onChange={(state) => { setMapFilters((current) => ({ ...current, state, district: "" })); setSelectedPin(""); }} options={states} />
+          <Filter label="District" value={mapFilters.district} onChange={(district) => { setMapFilters((current) => ({ ...current, district })); setSelectedPin(""); }} options={districts} />
+          <Filter label="Component" value={mapFilters.component} onChange={(component) => { setMapFilters((current) => ({ ...current, component, projectId: "" })); setSelectedPin(""); }} options={components} />
+          <Filter label="Project" value={mapFilters.projectId} onChange={(projectId) => { setMapFilters((current) => ({ ...current, projectId })); setSelectedPin(""); }} options={scoped.filter((project) => !mapFilters.component || project.component === mapFilters.component).map((project) => project.name)} values={scoped.filter((project) => !mapFilters.component || project.component === mapFilters.component).map((project) => project.id)} />
+          <Filter label="Activity" value={mapFilters.activity} onChange={(activity) => setMapFilters((current) => ({ ...current, activity }))} options={activities} />
+          <Filter label="Agency" value={mapFilters.agency} onChange={(agency) => setMapFilters((current) => ({ ...current, agency }))} options={agencies} />
+          <Filter label="KPI status" value={mapFilters.kpiStatus} onChange={(kpiStatus) => setMapFilters((current) => ({ ...current, kpiStatus }))} options={["Verified", "Pending", "Returned", "Exception"]} />
+        </div>
+        <div className="kdash-split">
+          <KpiSiteMap pins={pins} selectedId={selectedPin} onSelect={setSelectedPin} />
+          <LocationBrief pin={selected} />
+        </div>
+      </section>
+
       <section className="kdash-grid">
         <ChartPanel title="KPI achievement by State" rows={byState} />
         <ChartPanel title="KPI achievement by NCM component" rows={byComponent} />
@@ -275,28 +297,6 @@ export function KpiDashboardScreen() {
           </div>
         </section>
       ) : null}
-
-      <section className="panel">
-        <header>
-          <div>
-            <h2>Map view</h2>
-            <p>Pins and site polygons. Select a location to open its project, activities, agencies, and KPI progress.</p>
-          </div>
-        </header>
-        <div className="kdash-filters">
-          <Filter label="State" value={lockedState || mapFilters.state} disabled={Boolean(lockedState)} onChange={(state) => { setMapFilters((current) => ({ ...current, state, district: "" })); setSelectedPin(""); }} options={states} />
-          <Filter label="District" value={mapFilters.district} onChange={(district) => { setMapFilters((current) => ({ ...current, district })); setSelectedPin(""); }} options={districts} />
-          <Filter label="Component" value={mapFilters.component} onChange={(component) => { setMapFilters((current) => ({ ...current, component, projectId: "" })); setSelectedPin(""); }} options={components} />
-          <Filter label="Project" value={mapFilters.projectId} onChange={(projectId) => { setMapFilters((current) => ({ ...current, projectId })); setSelectedPin(""); }} options={scoped.filter((project) => !mapFilters.component || project.component === mapFilters.component).map((project) => project.name)} values={scoped.filter((project) => !mapFilters.component || project.component === mapFilters.component).map((project) => project.id)} />
-          <Filter label="Activity" value={mapFilters.activity} onChange={(activity) => setMapFilters((current) => ({ ...current, activity }))} options={activities} />
-          <Filter label="Agency" value={mapFilters.agency} onChange={(agency) => setMapFilters((current) => ({ ...current, agency }))} options={agencies} />
-          <Filter label="KPI status" value={mapFilters.kpiStatus} onChange={(kpiStatus) => setMapFilters((current) => ({ ...current, kpiStatus }))} options={["Verified", "Pending", "Returned", "Exception"]} />
-        </div>
-        <div className="kdash-split">
-          <KpiSiteMap pins={pins} selectedId={selectedPin} onSelect={setSelectedPin} />
-          <LocationBrief pin={selected} />
-        </div>
-      </section>
 
       <section className="panel projects-table">
         <header><h2>Project list</h2></header>
