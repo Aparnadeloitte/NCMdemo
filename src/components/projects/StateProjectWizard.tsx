@@ -6,6 +6,7 @@ import { districtsByState, states } from "@/data/options";
 import { getSession } from "@/lib/session";
 import { createEmptyProposal, readStateDraft, saveStateDraft, submitStateProposal } from "@/services/state-projects.service";
 import type { StateProjectActivity, StateProjectKpi, StateProjectProposal } from "@/types/domain";
+import { EmptyState } from "@/components/ui/Feedback";
 
 const steps = [
   { id: 1, label: "Basic Details", hint: "Project, location and lead" },
@@ -303,6 +304,9 @@ export function StateProjectWizard() {
             <h2>Activities & Milestones</h2>
             <p>Project: {draft.title.trim() || "Mangrove Restoration & Coastal Resilience"}</p>
           </header>
+          {draft.activities.length === 0 ? (
+            <EmptyState title="No activities added yet" message="Add the works and milestones the MIS should monitor for this project." />
+          ) : (
           <div className="table-wrap">
             <table className="proposal-table">
               <thead>
@@ -329,6 +333,7 @@ export function StateProjectWizard() {
               </tbody>
             </table>
           </div>
+          )}
           <div className="add-row">
             <button
               className="btn-ghost"
@@ -348,6 +353,9 @@ export function StateProjectWizard() {
             <h2>KPI Configuration</h2>
             <p>Ecological, financial and climate-resilience indicators for this project.</p>
           </header>
+          {draft.kpis.length === 0 ? (
+            <EmptyState title="No KPIs added yet" message="Add the indicators and evidence this project will report against." />
+          ) : (
           <div className="table-wrap">
             <table className="proposal-table">
               <thead>
@@ -386,6 +394,7 @@ export function StateProjectWizard() {
               </tbody>
             </table>
           </div>
+          )}
           <div className="add-row">
             <button
               className="btn-ghost"

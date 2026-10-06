@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CentralPreview } from "@/components/central/CentralPreview";
 import { PolygonSketch } from "@/components/central/PolygonSketch";
+import { EmptyState } from "@/components/ui/Feedback";
 import { agencyById, agencyDirectory, agenciesForActivity, blankActivity, blankAssignment, blankKpi, blankLocation, emptyCentralProject, financialYears, fundingSources, locationLabel, ncmComponents, standardKpis } from "@/data/central";
 import { districtsByState, states } from "@/data/options";
 import { getSession } from "@/lib/session";
@@ -281,6 +282,9 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
       {step === 3 ? (
         <section className="panel proposal-card">
           <header><h2>Implementation agencies</h2><p>One agency can be tagged to one or more activities and locations already added.</p></header>
+          {draft.agencies.length === 0 ? (
+            <EmptyState title="No agencies added yet" message="Add the implementing agencies responsible for this project's activities and locations." />
+          ) : null}
           {draft.agencies.map((assignment) => {
             const agency = agencyById(assignment.agencyId);
             const type = agencyType[assignment.id] ?? agency?.type ?? "";
@@ -330,6 +334,9 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
       {step === 4 ? (
         <section className="panel proposal-card">
           <header><h2>KPI configuration</h2><p>Choose a standard KPI and upload a location photo, or upload a custom KPI template.</p></header>
+          {draft.kpis.length === 0 ? (
+            <EmptyState title="No KPIs added yet" message="Add standard or custom indicators to track this project's progress." />
+          ) : null}
           {draft.kpis.map((kpi) => (
               <article key={kpi.id} className="location-card">
                 <header className="proposal-actions"><strong>{kpi.source === "custom" ? "Custom KPI" : "Standard KPI"}</strong><button className="text-link" type="button" onClick={() => patch({ kpis: draft.kpis.filter((item) => item.id !== kpi.id) })}>Remove</button></header>
