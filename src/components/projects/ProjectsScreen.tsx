@@ -7,6 +7,7 @@ import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/
 import { projectKpis } from "@/data/projects";
 import { summarize, useStoredProjects } from "@/lib/project-stats";
 import { states } from "@/data/options";
+import { ensureListedCentralProjects } from "@/services/central-projects.service";
 import { listProjects } from "@/services/projects.service";
 import type { ListQuery, NcmProject } from "@/types/domain";
 
@@ -21,10 +22,12 @@ export function ProjectsScreen() {
     [stored, query.search, query.state],
   );
 
+  const listedIds = stored.map((project) => project.id).join("|");
   useEffect(() => {
     let active = true;
     setRows(null);
     setError("");
+    ensureListedCentralProjects();
     listProjects(query)
       .then((result) => {
         if (!active) return;
@@ -35,7 +38,7 @@ export function ProjectsScreen() {
         if (active) setError(caught instanceof Error ? caught.message : "Unable to load projects.");
       });
     return () => { active = false; };
-  }, [query]);
+  }, [query, listedIds]);
 
   return (
     <div className="page">
@@ -105,7 +108,7 @@ export function ProjectsScreen() {
                     (currentTitle, suffix) => currentTitle.endsWith(suffix)
                       ? currentTitle.slice(0, -suffix.length)
                       : currentTitle,
-                    row.title,
+                    row.title || "Project",
                   );
                   return (
                     <span className="project-title">

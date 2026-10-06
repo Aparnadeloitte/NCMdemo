@@ -63,7 +63,7 @@ function centroid(points: [number, number][]) {
 
 function toPortalProject(project: CentralProject): NcmProject {
   const location = project.locations[0];
-  const point = location?.mode === "map" ? centroid(location.polygon) : centroid([]);
+  const point = location?.mode === "map" ? centroid(location.polygon ?? []) : centroid([]);
   const agency = agencyById(project.agencies[0]?.agencyId ?? "");
   return {
     id: project.id,
@@ -75,8 +75,8 @@ function toPortalProject(project: CentralProject): NcmProject {
     location: location?.site || location?.state || "Coast",
     interventionType: project.component,
     agency: agency?.name || "Implementing Agency",
-    area: project.kpis[0]?.target || "—",
-    polygonArea: location?.polygon.length ? `${location.polygon.length} pts` : "—",
+    area: (project.kpis ?? []).find((item) => item.target?.trim())?.target || "—",
+    polygonArea: location?.polygon?.length ? `${location.polygon.length} pts` : "—",
     status: "Ongoing",
     totalCost: project.totalCost,
     updated: stamp(),
@@ -86,8 +86,8 @@ function toPortalProject(project: CentralProject): NcmProject {
     longitude: point.longitude,
     coastline: location?.district || location?.state || "Coast",
     tide: "Neap tides",
-    image: project.component.toLowerCase().includes("mangrove") ? "/images/healthy_coast.svg" : "/images/coast.svg",
-    activities: project.activities.map((activity) => ({
+    image: (project.component || "").toLowerCase().includes("mangrove") ? "/images/healthy_coast.svg" : "/images/coast.svg",
+    activities: (project.activities ?? []).map((activity) => ({
       id: activity.id,
       name: activity.name,
       detail: activity.milestone,
@@ -185,23 +185,49 @@ export function upsertKpiReports(reports: KpiReport[], status: KpiReport["status
   return all.filter((item) => reports.some((report) => report.id === item.id));
 }
 
+function readyToList(projectId: string, reports: KpiReport[]) {
+  const mine = reports.filter((item) => item.projectId === projectId);
+  return mine.some((item) => item.status === "approved") && !mine.some((item) => item.status === "submitted");
+}
+
+export function ensureListedCentralProjects() {
+  if (typeof window === "undefined") return;
+  const reports = readReports();
+  const projects = readProjects();
+  let changed = false;
+  projects.forEach((project, index) => {
+    if (!readyToList(project.id, reports)) return;
+    const next: CentralProject = { ...project, status: "verified", published: true, updated: project.published ? project.updated : new Date().toISOString() };
+    publishProject(toPortalProject({
+      ...next,
+      name: next.name || "Central project",
+      component: next.component || "Coastal project",
+      locations: next.locations ?? [],
+      activities: next.activities ?? [],
+      agencies: next.agencies ?? [],
+      kpis: next.kpis ?? [],
+    }));
+    if (!project.published || project.status !== "verified") {
+      projects[index] = next;
+      changed = true;
+    }
+  });
+  if (changed) writeProjects(projects);
+}
+
 export function reviewKpiReport(id: string, decision: "approved" | "returned", note: string) {
   const reports = readReports();
   const index = reports.findIndex((item) => item.id === id);
   if (index < 0) throw new Error("This KPI submission was not found.");
   if (reports[index].status !== "submitted") throw new Error("This submission is not waiting for review.");
   if (decision === "returned" && !note.trim()) throw new Error("Add a note for the agency.");
+  const projectId = reports[index].projectId;
+  if (decision === "approved" && !readProjects().some((item) => item.id === projectId)) {
+    throw new Error("The project for this KPI was not found, so it could not be added to Projects.");
+  }
   reports[index] = { ...reports[index], status: decision, reviewNote: note.trim(), updated: new Date().toISOString() };
   writeReports(reports);
-  if (decision === "approved") {
-    const projects = readProjects();
-    const projectIndex = projects.findIndex((item) => item.id === reports[index].projectId);
-    if (projectIndex >= 0 && !projects[projectIndex].published) {
-      projects[projectIndex] = { ...projects[projectIndex], status: "verified", published: true, updated: new Date().toISOString() };
-      writeProjects(projects);
-      publishProject(toPortalProject(projects[projectIndex]));
-    }
-  }
+  ensureListedCentralProjects();
   return reports[index];
 }
 
