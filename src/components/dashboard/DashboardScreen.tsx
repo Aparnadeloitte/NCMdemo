@@ -6,8 +6,8 @@ import { CoastalMap, type MapProject } from "@/components/dashboard/CoastalMap";
 import { ErrorState, LoadingState } from "@/components/ui/Feedback";
 import { states } from "@/data/options";
 import { seedProjects } from "@/data/projects";
+import { formatFunds, formatProgress, matchesProject, summarize, useStoredProjects } from "@/lib/project-stats";
 import { getDashboard } from "@/services/records.service";
-import { countApprovedStateProjects } from "@/services/state-projects.service";
 import type { ChartBar, DashboardSnapshot, NcmProject } from "@/types/domain";
 
 const financialYears: Record<string, [string, string]> = {
@@ -116,10 +116,6 @@ function sumPortfolio(rows: PortfolioRow[]) {
   return { projects, ongoing, funds, progress };
 }
 
-function formatFunds(value: number) {
-  return `${Math.round(value).toLocaleString("en-IN")} Cr`;
-}
-
 export function DashboardScreen() {
   const [data, setData] = useState<DashboardSnapshot | null>(null);
   const [error, setError] = useState("");
@@ -128,7 +124,7 @@ export function DashboardScreen() {
   const [year, setYear] = useState("");
   const [stateName, setStateName] = useState("");
   const [kind, setKind] = useState("All Intervention Types");
-  const [extraProjects, setExtraProjects] = useState(0);
+  const stored = useStoredProjects();
 
   function load() {
     setError("");
@@ -140,94 +136,31 @@ export function DashboardScreen() {
 
   useEffect(() => {
     setWelcome(new URLSearchParams(window.location.search).get("welcome"));
-    setExtraProjects(countApprovedStateProjects());
     load();
   }, []);
 
+  const stats = useMemo(
+    () => summarize(stored, { search, year, state: stateName, kind }),
+    [stored, search, year, stateName, kind],
+  );
   const filtering = Boolean(search.trim() || year || stateName || kind !== "All Intervention Types");
-  const matched = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    return seedProjects.filter((item) => {
-      const searchOk = !needle || [item.title, item.location, item.state, item.district, item.interventionType, item.agency, item.campaignCode].some((value) => value.toLowerCase().includes(needle));
-      return searchOk && (!stateName || item.state === stateName) && inFinancialYear(item.start, item.end, year) && matchesType(item.interventionType, kind);
-    });
-  }, [search, year, stateName, kind]);
-  const bars = useMemo(() => {
-    if (!filtering) return coverage;
-    if (stateName) return coverage.filter((item) => item.label === stateName);
-    const named = coverage.filter((item) => item.label.toLowerCase().includes(search.trim().toLowerCase()));
-    if (search.trim() && named.length) return named;
-    const names = new Set(matched.map((item) => item.state));
-    return coverage.filter((item) => names.has(item.label));
-  }, [filtering, stateName, search, matched]);
+  const matched = useMemo(
+    () => [...seedProjects, ...stored].filter((item) => matchesProject(item, { search, year, state: stateName, kind })),
+    [stored, search, year, stateName, kind],
+  );
   const kpis = useMemo(() => {
     if (!data) return [];
-    const needle = search.trim().toLowerCase();
-    const currentYear = !year || year === "2026-27";
-    let rows = statePortfolio.filter((row) => !stateName || row.key === stateName);
-    if (needle) {
-      const named = rows.filter((row) => row.key.toLowerCase().includes(needle));
-      rows = named.length ? named : [];
-    }
-    const projectSearch = needle && rows.length === 0;
-    let totals = currentYear ? sumPortfolio(rows) : { projects: 0, ongoing: 0, funds: 0, progress: 0 };
-    if (projectSearch && currentYear) {
-      const ongoing = matched.filter((item) => item.status === "Ongoing").length;
-      const funds = matched.reduce((sum, item) => sum + Number(item.totalCost || 0), 0);
-      const done = matched.filter((item) => item.status === "Completed").length;
-      totals = {
-        projects: matched.length,
-        ongoing,
-        funds,
-        progress: matched.length ? Math.round((done / matched.length) * 100) : 0,
-      };
-    } else if (currentYear && kind !== "All Intervention Types") {
-      const typeRow = typePortfolio.find((row) => row.key === kind);
-      if (!needle && !stateName && typeRow) totals = { ...typeRow };
-      else if (typeRow) {
-        const share = typeRow.projects / 245;
-        totals = {
-          projects: Math.round(totals.projects * share),
-          ongoing: Math.round(totals.ongoing * share),
-          funds: Math.round(totals.funds * share),
-          progress: typeRow.progress,
-        };
-      }
-    }
-    const national = totals.projects === 245 && totals.ongoing === 168 && totals.funds === 1246;
-    const projectCount = national ? totals.projects + extraProjects : totals.projects;
-    const ongoingCount = national ? totals.ongoing + extraProjects : totals.ongoing;
+    const { totals, baseline } = stats;
     return data.kpis.map((kpi) => {
-      if (kpi.id === "projects") return { ...kpi, value: String(projectCount), note: national ? "+3.2% vs last month" : "" };
-      if (kpi.id === "ongoing") return { ...kpi, value: String(ongoingCount), note: national ? "+5.2% vs last month" : "" };
+      if (kpi.id === "projects") return { ...kpi, value: String(totals.projects), note: baseline ? "+3.2% vs last month" : "" };
+      if (kpi.id === "ongoing") return { ...kpi, value: String(totals.ongoing), note: baseline ? "+5.2% vs last month" : "" };
       if (kpi.id === "funds") return { ...kpi, value: formatFunds(totals.funds), note: "" };
-      if (kpi.id === "progress") return { ...kpi, value: `${national ? 92 : totals.progress}%`, note: national ? "+0.8% vs last month" : "" };
+      if (kpi.id === "progress") return { ...kpi, value: formatProgress(totals.progress), note: baseline ? "+0.8% vs last month" : "" };
       return kpi;
     });
-  }, [data, search, year, stateName, kind, matched, extraProjects]);
-  const slices = useMemo(() => {
-    if (!filtering) return statusSlices;
-    const ongoing = matched.filter((item) => item.status === "Ongoing").length;
-    const pending = matched.filter((item) => item.status === "Pending").length;
-    const total = Math.max(matched.length, 1);
-    return [
-      { label: "On Track", display: `${Math.round((ongoing / total) * 100)}%`, color: "#22a35a", weight: ongoing },
-      { label: "Attention Required", display: `${Math.round((pending / total) * 100)}%`, color: "#f5b400", weight: pending },
-      { label: "Delayed", display: `${Math.round(((matched.length - ongoing - pending) / total) * 100)}%`, color: "#f04438", weight: Math.max(matched.length - ongoing - pending, 0) },
-    ];
-  }, [filtering, matched]);
-  const types = useMemo(() => {
-    if (!filtering) return interventionTypes;
-    return interventionTypes
-      .map((item) => {
-        const count = matched.filter((itemProject) => matchesType(itemProject.interventionType, item.label)).length;
-        const share = matched.length ? Math.round((count / matched.length) * 100) : 0;
-        return { ...item, count: String(count), share: `${share}%` };
-      })
-      .filter((item) => kind === "All Intervention Types" || item.label === kind || item.label === "Others");
-  }, [filtering, matched, kind]);
+  }, [data, stats]);
   const mapProject = useMemo(() => (filtering ? (matched[0] ? toMapProject(matched[0]) : null) : undefined), [filtering, matched]);
-  const pinQuery = coverage.some((item) => item.label.toLowerCase().includes(search.trim().toLowerCase())) ? search.trim() : "";
+  const pinQuery = stats.bars.some((item) => item.label.toLowerCase().includes(search.trim().toLowerCase())) ? search.trim() : "";
 
   return (
     <div className="page dash-page">
@@ -301,7 +234,7 @@ export function DashboardScreen() {
             </div>
           </header>
           <section className="panel map-panel" id="coastal-map">
-            <CoastalMap stateName={stateName} query={pinQuery} project={mapProject} />
+            <CoastalMap stateName={stateName} query={pinQuery} project={mapProject} counts={stats.mapCounts} />
           </section>
           <section className="panel">
             <header className="chart-head">
@@ -319,7 +252,7 @@ export function DashboardScreen() {
                 </select>
               </label>
             </header>
-            {bars.length ? <BarChart bars={bars} /> : <p className="field-hint">No projects match these filters.</p>}
+            {stats.bars.length ? <BarChart bars={stats.bars} /> : <p className="field-hint">No projects match these filters.</p>}
           </section>
           <div className="insight-grid">
             <section className="panel status-panel">
@@ -327,13 +260,13 @@ export function DashboardScreen() {
                 <h2>Intervention Status</h2>
                 <Link className="text-link" href="/interventions">View All</Link>
               </header>
-              <StatusDonut slices={slices} total={filtering ? matched.length : 168} />
+              <StatusDonut slices={stats.slices} total={stats.donutTotal} />
               <Link className="btn-ghost detail-report" href="/reports">View Detail Report</Link>
             </section>
             <section className="panel">
               <header className="chart-head"><h2>Intervention Type</h2></header>
               <ul className="type-list">
-                {types.map((item) => (
+                {stats.types.map((item) => (
                   <li key={item.label}>
                     <i style={{ background: item.color }} />
                     <span>{item.label}</span>

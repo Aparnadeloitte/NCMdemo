@@ -63,7 +63,7 @@ export type MapProject = {
   longitude: number;
 };
 
-export function CoastalMap({ stateName = "", query = "", project = undefined }: { stateName?: string; query?: string; project?: MapProject | null }) {
+export function CoastalMap({ stateName = "", query = "", project = undefined, counts = {} }: { stateName?: string; query?: string; project?: MapProject | null; counts?: Record<string, string> }) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const groups = useRef<Partial<Record<LayerId, LayerGroup>>>({});
@@ -214,6 +214,26 @@ export function CoastalMap({ stateName = "", query = "", project = undefined }: 
       if (hit) map.flyTo([hit.lat, hit.lng], 7, { duration: 0.7 });
     } else map.flyTo([18.6, 80.2], 5, { duration: 0.7 });
   }, [ready, stateName, query, project]);
+
+  useEffect(() => {
+    if (!ready) return;
+    let cancelled = false;
+    import("leaflet").then((L) => {
+      if (cancelled) return;
+      siteMarkers.current.forEach((marker, index) => {
+        const site = sites[index];
+        if (!site) return;
+        const count = counts[site.name] ?? site.count;
+        marker.setIcon(L.divIcon({
+          className: "map-pin",
+          html: `<span style="background:${site.color}">${count}</span>`,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+        }));
+      });
+    });
+    return () => { cancelled = true; };
+  }, [ready, counts]);
 
   function focusProject() {
     const target: [number, number] = project ? [project.latitude, project.longitude] : PICHAVARAM;

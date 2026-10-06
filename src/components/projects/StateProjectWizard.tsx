@@ -200,15 +200,7 @@ export function StateProjectWizard() {
           <header><h2>Basic Details</h2></header>
           <div className="form-grid">
             <div className="field span-2">
-              <span>Project / Campaign</span>
-              <div className="choice-row">
-                {(["Project", "Campaign"] as const).map((kind) => (
-                  <label key={kind}>
-                    <input type="radio" name="kind" checked={draft.kind === kind} onChange={() => patch({ kind })} />
-                    {kind}
-                  </label>
-                ))}
-              </div>
+              <span>Project</span>
             </div>
             <label className="field">
               <span>NCM component</span>

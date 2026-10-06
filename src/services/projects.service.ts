@@ -27,8 +27,15 @@ function readStore(): NcmProject[] {
   return [...readCreatedProjects(), ...seedProjects];
 }
 
+export const PROJECTS_EVENT = "ncm-projects-changed";
+
 function writeCreatedProjects(items: NcmProject[]) {
   localStorage.setItem(CREATED_PROJECTS_KEY, JSON.stringify(items));
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(PROJECTS_EVENT));
+}
+
+export function listStoredProjects(): NcmProject[] {
+  return readCreatedProjects();
 }
 
 export function publishProject(project: NcmProject) {

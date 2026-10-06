@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { DataTable, Pagination } from "@/components/ui/DataTable";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/ui/Feedback";
 import { projectKpis } from "@/data/projects";
-import { countApprovedStateProjects } from "@/services/state-projects.service";
+import { summarize, useStoredProjects } from "@/lib/project-stats";
 import { states } from "@/data/options";
 import { listProjects } from "@/services/projects.service";
 import type { ListQuery, NcmProject } from "@/types/domain";
@@ -15,9 +15,11 @@ export function ProjectsScreen() {
   const [rows, setRows] = useState<NcmProject[] | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
-  const [extraProjects, setExtraProjects] = useState(0);
-
-  useEffect(() => { setExtraProjects(countApprovedStateProjects()); }, []);
+  const stored = useStoredProjects();
+  const stats = useMemo(
+    () => summarize(stored, { search: query.search, state: query.state }),
+    [stored, query.search, query.state],
+  );
 
   useEffect(() => {
     let active = true;
@@ -43,11 +45,18 @@ export function ProjectsScreen() {
       </header>
       <section className="kpi-grid dash-kpis" aria-label="Project summary">
         {projectKpis.map((kpi) => {
-          const value = kpi.id === "total" ? String(245 + extraProjects) : kpi.id === "ongoing" ? String(168 + extraProjects) : kpi.value;
+          const { totals, baseline } = stats;
+          const value = kpi.id === "total"
+            ? String(totals.projects)
+            : kpi.id === "ongoing"
+              ? String(totals.ongoing)
+              : kpi.id === "completed"
+                ? String(totals.completed)
+                : String(totals.rejected);
           return (
             <article key={kpi.id} className="kpi">
               <img src={kpi.icon} alt="" />
-              <div><p>{kpi.label}</p><strong>{value}</strong><small className="kpi-up">{kpi.note}</small></div>
+              <div><p>{kpi.label}</p><strong>{value}</strong>{baseline ? <small className="kpi-up">{kpi.note}</small> : null}</div>
             </article>
           );
         })}
