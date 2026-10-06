@@ -31,6 +31,12 @@ function writeCreatedProjects(items: NcmProject[]) {
   localStorage.setItem(CREATED_PROJECTS_KEY, JSON.stringify(items));
 }
 
+export function publishProject(project: NcmProject) {
+  const created = readCreatedProjects();
+  if (created.some((item) => item.id === project.id)) return;
+  writeCreatedProjects([project, ...created]);
+}
+
 function formatSubmissionTime(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",

@@ -125,6 +125,66 @@ export type NcmProject = {
   activities: ProjectActivity[];
 };
 
+export type StateProjectStatus =
+  | "draft"
+  | "awaiting-documents"
+  | "pending-approval"
+  | "approved"
+  | "rejected";
+
+export type StateProjectActivity = {
+  id: string;
+  name: string;
+  start: string;
+  end: string;
+  target: string;
+  budget: string;
+};
+
+export type StateProjectKpi = {
+  id: string;
+  name: string;
+  target: string;
+  unit: string;
+  frequency: string;
+  evidence: string;
+};
+
+export type StateProjectDocuments = {
+  dpr: string;
+  administrative: string;
+  sanction: string;
+  gis: string;
+  other: string;
+};
+
+export type StateProjectProposal = {
+  id: string;
+  status: StateProjectStatus;
+  state: string;
+  createdBy: string;
+  kind: "Project" | "Campaign";
+  component: string;
+  title: string;
+  objective: string;
+  districts: string[];
+  agency: string;
+  lead: string;
+  start: string;
+  end: string;
+  budget: string;
+  fundingSource: string;
+  physicalTarget: string;
+  financialTarget: string;
+  reportingFrequency: string;
+  site: string;
+  activities: StateProjectActivity[];
+  kpis: StateProjectKpi[];
+  documents: StateProjectDocuments;
+  confirmed: boolean;
+  updated: string;
+};
+
 export type CampaignDraft = {
   campaignId: string;
   reportingFrom: string;

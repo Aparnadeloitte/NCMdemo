@@ -7,6 +7,8 @@ export type AuthSession = {
   organization: string;
   role: string;
   nextStep: AuthNextStep;
+  /** Coastal state this account is responsible for, when the role is state-scoped. */
+  state?: string;
 };
 
 /**

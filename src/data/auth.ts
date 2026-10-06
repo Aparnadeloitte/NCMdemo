@@ -28,6 +28,24 @@ export const directoryUsers: DirectoryUser[] = [
     role: "Agency user",
     nextStep: "dashboard",
   },
+  {
+    userId: "usr-state-odisha",
+    name: "Odisha Coastal Cell",
+    identifier: "state@ncm.gov.in",
+    organization: "State/UT",
+    role: "State user",
+    nextStep: "dashboard",
+    state: "Odisha",
+  },
+  {
+    userId: "usr-state-goa",
+    name: "Goa Coastal Cell",
+    identifier: "goa@ncm.gov.in",
+    organization: "State/UT",
+    role: "State user",
+    nextStep: "dashboard",
+    state: "Goa",
+  },
 ];
 
 export const digiLockerDemoUser: DirectoryUser = directoryUsers[0];

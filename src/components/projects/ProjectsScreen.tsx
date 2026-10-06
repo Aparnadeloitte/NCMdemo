@@ -5,6 +5,7 @@ import Link from "next/link";
 import { DataTable, Pagination } from "@/components/ui/DataTable";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/ui/Feedback";
 import { projectKpis } from "@/data/projects";
+import { countApprovedStateProjects } from "@/services/state-projects.service";
 import { states } from "@/data/options";
 import { listProjects } from "@/services/projects.service";
 import type { ListQuery, NcmProject } from "@/types/domain";
@@ -14,6 +15,9 @@ export function ProjectsScreen() {
   const [rows, setRows] = useState<NcmProject[] | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
+  const [extraProjects, setExtraProjects] = useState(0);
+
+  useEffect(() => { setExtraProjects(countApprovedStateProjects()); }, []);
 
   useEffect(() => {
     let active = true;
@@ -38,12 +42,15 @@ export function ProjectsScreen() {
         <Link className="btn-primary" href="/projects/new">Create New Project</Link>
       </header>
       <section className="kpi-grid dash-kpis" aria-label="Project summary">
-        {projectKpis.map((kpi) => (
-          <article key={kpi.id} className="kpi">
-            <img src={kpi.icon} alt="" />
-            <div><p>{kpi.label}</p><strong>{kpi.value}</strong><small className="kpi-up">{kpi.note}</small></div>
-          </article>
-        ))}
+        {projectKpis.map((kpi) => {
+          const value = kpi.id === "total" ? String(245 + extraProjects) : kpi.id === "ongoing" ? String(168 + extraProjects) : kpi.value;
+          return (
+            <article key={kpi.id} className="kpi">
+              <img src={kpi.icon} alt="" />
+              <div><p>{kpi.label}</p><strong>{value}</strong><small className="kpi-up">{kpi.note}</small></div>
+            </article>
+          );
+        })}
       </section>
       <form className="filters" onSubmit={(event) => event.preventDefault()}>
         <label>

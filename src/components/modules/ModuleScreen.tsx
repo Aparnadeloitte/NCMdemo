@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CoastalMap } from "@/components/dashboard/CoastalMap";
+import { StateApprovalQueue } from "@/components/state-projects/StateApprovalQueue";
 import { DataTable, Pagination } from "@/components/ui/DataTable";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/ui/Feedback";
 import { directoryUsers } from "@/data/auth";
@@ -119,6 +120,7 @@ function RecordScreen({ moduleId }: { moduleId: Exclude<ModuleId, "map"> }) {
   return (
     <div className="page">
       <header className="page-head"><div><h1>{copy.title}</h1><p>{copy.description}</p></div></header>
+      {moduleId === "approvals" ? <StateApprovalQueue /> : null}
       <form className="filters" onSubmit={(event) => event.preventDefault()}>
         <label>
           <span className="sr-only">Search</span>

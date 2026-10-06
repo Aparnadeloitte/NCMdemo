@@ -33,7 +33,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="portal">
       <PortalHeader onMenu={() => setOpen(true)} user={session} />
       <div className="portal-body">
-        <Sidebar open={open} onClose={() => setOpen(false)} />
+        <Sidebar open={open} onClose={() => setOpen(false)} role={session.role} />
         <main className="portal-main">{children}</main>
       </div>
       <button

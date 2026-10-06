@@ -7,6 +7,7 @@ import { ErrorState, LoadingState } from "@/components/ui/Feedback";
 import { states } from "@/data/options";
 import { seedProjects } from "@/data/projects";
 import { getDashboard } from "@/services/records.service";
+import { countApprovedStateProjects } from "@/services/state-projects.service";
 import type { ChartBar, DashboardSnapshot, NcmProject } from "@/types/domain";
 
 const financialYears: Record<string, [string, string]> = {
@@ -127,6 +128,7 @@ export function DashboardScreen() {
   const [year, setYear] = useState("");
   const [stateName, setStateName] = useState("");
   const [kind, setKind] = useState("All Intervention Types");
+  const [extraProjects, setExtraProjects] = useState(0);
 
   function load() {
     setError("");
@@ -138,6 +140,7 @@ export function DashboardScreen() {
 
   useEffect(() => {
     setWelcome(new URLSearchParams(window.location.search).get("welcome"));
+    setExtraProjects(countApprovedStateProjects());
     load();
   }, []);
 
@@ -192,14 +195,16 @@ export function DashboardScreen() {
       }
     }
     const national = totals.projects === 245 && totals.ongoing === 168 && totals.funds === 1246;
+    const projectCount = national ? totals.projects + extraProjects : totals.projects;
+    const ongoingCount = national ? totals.ongoing + extraProjects : totals.ongoing;
     return data.kpis.map((kpi) => {
-      if (kpi.id === "projects") return { ...kpi, value: String(totals.projects), note: national ? "+3.2% vs last month" : "" };
-      if (kpi.id === "ongoing") return { ...kpi, value: String(totals.ongoing), note: national ? "+5.2% vs last month" : "" };
+      if (kpi.id === "projects") return { ...kpi, value: String(projectCount), note: national ? "+3.2% vs last month" : "" };
+      if (kpi.id === "ongoing") return { ...kpi, value: String(ongoingCount), note: national ? "+5.2% vs last month" : "" };
       if (kpi.id === "funds") return { ...kpi, value: formatFunds(totals.funds), note: "" };
       if (kpi.id === "progress") return { ...kpi, value: `${national ? 92 : totals.progress}%`, note: national ? "+0.8% vs last month" : "" };
       return kpi;
     });
-  }, [data, search, year, stateName, kind, matched]);
+  }, [data, search, year, stateName, kind, matched, extraProjects]);
   const slices = useMemo(() => {
     if (!filtering) return statusSlices;
     const ongoing = matched.filter((item) => item.status === "Ongoing").length;
