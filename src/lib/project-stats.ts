@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { seedProjects } from "@/data/projects";
+import { ensureListedCentralProjects } from "@/services/central-projects.service";
 import { listStoredProjects, PROJECTS_EVENT } from "@/services/projects.service";
 import type { NcmProject } from "@/types/domain";
 
@@ -306,7 +307,10 @@ export function summarize(stored: NcmProject[], filters: ProjectFilters = {}) {
 export function useStoredProjects() {
   const [projects, setProjects] = useState<NcmProject[]>([]);
   useEffect(() => {
-    const load = () => setProjects(listStoredProjects());
+    const load = () => {
+      ensureListedCentralProjects();
+      setProjects(listStoredProjects());
+    };
     load();
     window.addEventListener(PROJECTS_EVENT, load);
     window.addEventListener("storage", load);

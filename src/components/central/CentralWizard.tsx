@@ -232,7 +232,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                       checked={location.mode === "map"}
                       onChange={() => {
                         const hasDrawing = location.polygon.some((ring) => ring.length > 0);
-                        if (!hasDrawing && mapCenter) patchLocation(location.id, { mode: "map", polygon: [square(mapCenter), []] });
+                        if (!hasDrawing && mapCenter) patchLocation(location.id, { mode: "map", polygon: [square(mapCenter)] });
                         else patchLocation(location.id, { mode: "map" });
                       }}
                     /> Draw polygon on map
@@ -253,7 +253,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                         const nextDistrict = districts.find((item) => item.label === districtLabel);
                         if (location.mode === "map" && state && nextDistrict) {
                           const center = districtCentroid(state.value, nextDistrict.value) ?? stateCentroids[state.value];
-                          patchLocation(location.id, { district: districtLabel, polygon: center ? [square(center), []] : location.polygon });
+                          patchLocation(location.id, { district: districtLabel, polygon: center ? [square(center)] : location.polygon });
                         } else {
                           patchLocation(location.id, { district: districtLabel });
                         }

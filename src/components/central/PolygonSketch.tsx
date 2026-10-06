@@ -95,7 +95,8 @@ export function PolygonSketch({
   function addSquare() {
     const base = center ?? DEFAULT_CENTER;
     const withoutEmptyActive = active.length ? rings : rings.slice(0, -1);
-    onChange([...withoutEmptyActive, square(base), []]);
+    // Leave the square as the active ring so clicking the map adds/expands its points.
+    onChange([...withoutEmptyActive, square(base)]);
   }
 
   return (

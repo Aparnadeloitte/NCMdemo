@@ -40,7 +40,14 @@ export function listStoredProjects(): NcmProject[] {
 
 export function publishProject(project: NcmProject) {
   const created = readCreatedProjects();
-  if (created.some((item) => item.id === project.id)) return;
+  const index = created.findIndex((item) => item.id === project.id);
+  if (index >= 0) {
+    if (JSON.stringify(created[index]) === JSON.stringify(project)) return;
+    const next = [...created];
+    next[index] = project;
+    writeCreatedProjects(next);
+    return;
+  }
   writeCreatedProjects([project, ...created]);
 }
 
@@ -84,7 +91,7 @@ export async function listProjects(query: ListQuery): Promise<ListResult<NcmProj
   await wait();
   const search = (query.search ?? "").trim().toLowerCase();
   const filtered = readStore().filter((row) => {
-    const searchOk = !search || [row.id, row.campaignCode, row.title, row.state, row.district, row.interventionType].some((value) => value.toLowerCase().includes(search));
+    const searchOk = !search || [row.id, row.campaignCode, row.title, row.state, row.district, row.interventionType].some((value) => (value ?? "").toLowerCase().includes(search));
     const statusOk = !query.status || row.status === query.status;
     const stateOk = !query.state || row.state === query.state;
     return searchOk && statusOk && stateOk;

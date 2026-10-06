@@ -279,7 +279,7 @@ export function KpiReviewList() {
               {rows.map((row) => {
                 const project = getCentralProject(row.projectId);
                 const kpi = project?.kpis.find((item) => item.id === row.kpiId);
-                return <tr key={row.id}><td>{project?.name}</td><td>{kpi?.name}</td><td>{row.achievement}</td><td><Link className="text-link" href={`/kpi-review/${encodeURIComponent(row.id)}`}>Review</Link></td></tr>;
+                return <tr key={row.id}><td>{project?.name}</td><td>{kpi?.name}</td><td>{row.achievement}</td><td><Link className="text-link" href={`/kpi-review/${encodeURIComponent(row.id.replaceAll(":", "~"))}`}>Review</Link></td></tr>;
               })}
             </tbody>
           </table>
@@ -310,7 +310,12 @@ export function KpiReviewDetail({ reportId: id }: { reportId: string }) {
   async function decide(decision: "approved" | "returned") {
     setPending(decision);
     setError("");
-    try { setReport(reviewKpiReport(currentReport.id, decision, note)); }
+    try {
+      const updated = reviewKpiReport(currentReport.id, decision, note);
+      setReport(updated);
+      const nextProject = getCentralProject(updated.projectId);
+      if (nextProject) setProject(nextProject);
+    }
     catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to save this decision."); }
     finally { setPending(""); }
   }
@@ -348,7 +353,11 @@ export function KpiReviewDetail({ reportId: id }: { reportId: string }) {
               <button className="btn-primary" type="button" disabled={pending !== ""} onClick={() => void decide("approved")}>{pending === "approved" ? "Saving…" : "Approve"}</button>
             </div>
           </>
-        ) : <p className="proposal-note">{report.status === "approved" ? "Approved. If this was the first verified submission, the project is now counted in Total Projects." : `Returned: ${report.reviewNote}`}</p>}
+        ) : report.status === "approved" ? (
+          project.published
+            ? <p className="proposal-note">Approved. This was the last KPI review, so the project is now listed in <Link href="/projects">Projects</Link>.</p>
+            : <p className="proposal-note">Approved. The project is added to Projects when the last KPI review for this project is approved.</p>
+        ) : <p className="proposal-note">Returned: {report.reviewNote}</p>}
       </section>
     </div>
   );
