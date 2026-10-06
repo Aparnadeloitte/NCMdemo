@@ -166,7 +166,7 @@ export const projectKpis: DashboardKpi[] = [
   { id: "total", label: "Total Projects", value: "245", note: "+3.2% vs last month", icon: "/images/Folder_dashboard.svg" },
   { id: "ongoing", label: "Ongoing", value: "168", note: "+1.4% vs last month", icon: "/images/File_dashboard.svg" },
   { id: "completed", label: "Completed", value: "82", note: "+0.8% vs last month", icon: "/images/Film_dashboard.svg" },
-  { id: "pending", label: "Pending", value: "63", note: "+2.1% vs last month", icon: "/images/Grid_dashboard.svg" },
+  { id: "pending", label: "Rejected", value: "63", note: "+2.1% vs last month", icon: "/images/Grid_dashboard.svg" },
 ];
 
 export const physicalRows = [

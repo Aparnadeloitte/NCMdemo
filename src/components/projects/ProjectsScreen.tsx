@@ -33,18 +33,15 @@ export function ProjectsScreen() {
 
   return (
     <div className="page">
-      <header className="page-head">
-        <div>
-          <h1>Projects</h1>
-          <p>Coastal restoration projects tracked under NCM 2.0.</p>
-        </div>
+      <header className="page-head dash-head">
+        <h1>Projects</h1>
         <Link className="btn-primary" href="/projects/new">Create New Project</Link>
       </header>
-      <section className="kpi-grid" aria-label="Project summary">
+      <section className="kpi-grid dash-kpis" aria-label="Project summary">
         {projectKpis.map((kpi) => (
           <article key={kpi.id} className="kpi">
             <img src={kpi.icon} alt="" />
-            <div><p>{kpi.label}</p><strong>{kpi.value}</strong><small>{kpi.note}</small></div>
+            <div><p>{kpi.label}</p><strong>{kpi.value}</strong><small className="kpi-up">{kpi.note}</small></div>
           </article>
         ))}
       </section>
