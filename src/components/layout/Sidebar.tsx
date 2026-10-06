@@ -30,7 +30,10 @@ const roleItem: Record<string, { href: string; label: string; icon: string }[]> 
 export function Sidebar({ open, onClose, role }: { open: boolean; onClose: () => void; role?: string }) {
   const pathname = usePathname();
   const extra = role ? roleItem[role] ?? [] : [];
-  const nav = [...items.slice(0, 4), ...extra, ...items.slice(4)];
+  const kpiItem = { href: "/kpi-dashboard", label: "KPI Dashboard", icon: "/images/Grid_dashboard.svg" };
+  const showKpi = role === "State user" || role === "Central user";
+  const primary = showKpi ? [items[0], kpiItem, ...items.slice(1, 4)] : items.slice(0, 4);
+  const nav = [...primary, ...extra, ...items.slice(4)];
   return (
     <>
       <button className={`sidebar-backdrop${open ? " show" : ""}`} type="button" aria-label="Close menu" onClick={onClose} />
