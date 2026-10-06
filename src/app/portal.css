@@ -636,7 +636,7 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 .kdash-cards { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .kdash-cards .kpi strong { font-size: 20px; line-height: 1.25; }
 .kdash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.kdash-split { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.kdash-split { display: grid; grid-template-columns: 1.4fr .8fr; gap: 16px; align-items: start; }
 .kdash-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 .kdash-filters select, .kdash-select select { height: 36px; min-width: 150px; padding: 0 28px 0 10px; border: 1px solid #d7dee6; border-radius: 8px; background: #fff; color: #24384c; font-weight: 600; }
 .kdash-select { display: block; margin: 12px 0; }
@@ -667,6 +667,9 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 .kdash-pill { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 999px; background: #ecfdf3; color: #067647; font-size: 12px; font-weight: 700; }
 .kdash-pill.pending { background: #fffaeb; color: #b54708; }
 .kdash-pill.returned, .kdash-pill.exception { background: #fef3f2; color: #b42318; }
+.kdash-project { display: flex; flex-direction: column; gap: 16px; margin-top: 8px; }
+.kdash-project .page-head h2 { margin: 0; font-size: 22px; }
+.kdash-project .kdash-pair span { white-space: normal; }
 .kdash-kpi { width: 100%; padding: 0; border: 0; background: transparent; color: #00389a; font-weight: 800; text-align: left; cursor: pointer; }
 .kdash-detail { margin-top: 12px; padding: 14px; border-radius: 12px; background: #f8fafc; }
 .kdash-detail dl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 8px 0 0; }
@@ -677,6 +680,6 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
   .kdash-cards, .kdash-grid, .kdash-detail dl { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 860px) {
-  .kdash-cards, .kdash-grid, .kdash-detail dl { grid-template-columns: 1fr; }
+  .kdash-cards, .kdash-grid, .kdash-split, .kdash-detail dl { grid-template-columns: 1fr; }
   .kdash-map { height: 420px; }
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { KpiSiteMap, type KpiPin } from "@/components/kpi-dashboard/KpiSiteMap";
+import { ProjectView } from "@/components/kpi-dashboard/KpiProjectView";
 import { DataTable, Pagination } from "@/components/ui/DataTable";
 import { EmptyState, StatusBadge } from "@/components/ui/Feedback";
 import {
@@ -65,6 +65,7 @@ export function KpiDashboardScreen() {
   const [page, setPage] = useState(1);
   const [selectedPin, setSelectedPin] = useState("");
   const [drillProject, setDrillProject] = useState("");
+  const [viewId, setViewId] = useState("");
 
   useEffect(() => {
     const session = getSession();
@@ -168,6 +169,11 @@ export function KpiDashboardScreen() {
     return true;
   }), [scoped, listFilters, lockedState]);
   const pageRows = listed.slice((page - 1) * 6, page * 6);
+  const viewProject = scoped.find((project) => project.id === viewId) ?? scoped[0];
+  function openProject(id: string) {
+    setViewId(id);
+    window.requestAnimationFrame(() => document.getElementById("project-view")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
 
   if (role === null) return null;
   if (role !== "State user" && role !== "Central user") {
@@ -212,7 +218,7 @@ export function KpiDashboardScreen() {
         </div>
         <div className="kdash-split">
           <KpiSiteMap pins={pins} selectedId={selectedPin} onSelect={setSelectedPin} />
-          <LocationBrief pin={selected} />
+          <LocationBrief pin={selected} onOpenProject={openProject} />
         </div>
       </section>
 
@@ -314,7 +320,7 @@ export function KpiDashboardScreen() {
               rows={pageRows}
               rowKey={(row) => row.id}
               columns={[
-                { key: "name", header: "Project", render: (row) => <Link className="text-link" href={`/kpi-dashboard/${row.id}`}>{row.name}</Link> },
+                { key: "name", header: "Project", render: (row) => <button type="button" className="text-link" onClick={() => openProject(row.id)}>{row.name}</button> },
                 { key: "component", header: "Component", render: (row) => componentShort(row.component) },
                 { key: "locations", header: "Location(s)", render: (row) => row.locations.map((location) => location.name).join(", ") },
                 { key: "agency", header: "Agency", render: (row) => row.agencies.join(", ") },
@@ -327,6 +333,24 @@ export function KpiDashboardScreen() {
           </>
         ) : <EmptyState title="No projects" message="No projects match these filters." />}
       </section>
+
+      {viewProject ? (
+        <section className="panel" id="project-view">
+          <header>
+            <div>
+              <h2>Project view</h2>
+              <p>One project record: details, sites, activities, agencies, KPIs, documents, and the audit trail.</p>
+            </div>
+            <label className="kdash-select">
+              <span className="sr-only">Project</span>
+              <select value={viewProject.id} onChange={(event) => setViewId(event.target.value)}>
+                {scoped.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+              </select>
+            </label>
+          </header>
+          <ProjectView key={viewProject.id} project={viewProject} />
+        </section>
+      ) : null}
     </div>
   );
 }
@@ -387,7 +411,7 @@ function Filter({ label, value, options, values, disabled, onChange }: { label: 
   );
 }
 
-function LocationBrief({ pin }: { pin: { project: DashProject; locationId: string; name: string } | null }) {
+function LocationBrief({ pin, onOpenProject }: { pin: { project: DashProject; locationId: string; name: string } | null; onOpenProject: (id: string) => void }) {
   if (!pin) return <div className="kdash-brief"><h3>Location</h3><p>Select a pin to see the project, activities, agencies, and KPI progress for that site.</p></div>;
   const location = locationById(pin.project, pin.locationId);
   const rows = pin.project.kpis.filter((kpi) => kpi.locationId === pin.locationId);
@@ -402,7 +426,7 @@ function LocationBrief({ pin }: { pin: { project: DashProject; locationId: strin
       <h3>{location?.name}</h3>
       <p>{location?.district}, {location?.state}</p>
       <dl>
-        <div><dt>Project</dt><dd><Link href={`/kpi-dashboard/${pin.project.id}`}>{pin.project.name}</Link></dd></div>
+        <div><dt>Project</dt><dd><button type="button" className="text-link" onClick={() => onOpenProject(pin.project.id)}>{pin.project.name}</button></dd></div>
         <div><dt>Component</dt><dd>{componentShort(pin.project.component)}</dd></div>
         <div><dt>KPI progress</dt><dd>{averagePercent(rows)}% · {rows.length} KPIs</dd></div>
       </dl>

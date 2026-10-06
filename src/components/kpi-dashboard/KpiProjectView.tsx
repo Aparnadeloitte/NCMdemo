@@ -18,7 +18,6 @@ import {
 } from "@/data/kpi-dashboard";
 import { getSession } from "@/lib/session";
 
-const tabs = ["Overview", "Locations", "Activities", "Implementation Agencies", "KPIs", "Documents", "Audit Trail"] as const;
 const pinColors: Record<string, string> = {
   "Blue Flag / BEAMS": "#2f6fed",
   Mangrove: "#1f9d55",
@@ -26,14 +25,37 @@ const pinColors: Record<string, string> = {
   "Coastal Wetland": "#149a9a",
 };
 
+export function ProjectView({ project }: { project: DashProject }) {
+  const [openId, setOpenId] = useState("");
+  const [page, setPage] = useState(1);
+  const [auditPage, setAuditPage] = useState(1);
+  const [selectedPin, setSelectedPin] = useState("");
+  const open = project.kpis.find((kpi) => kpi.id === openId) ?? null;
+
+  return (
+    <div className="kdash-project">
+      <header className="page-head">
+        <div>
+          <h2>{project.name}</h2>
+          <p>{project.component}</p>
+        </div>
+        <StatusBadge status={project.status} />
+      </header>
+      <Overview project={project} />
+      <Locations project={project} selectedPin={selectedPin} onSelect={setSelectedPin} />
+      <Activities project={project} />
+      <Agencies project={project} />
+      <Kpis project={project} page={page} onPage={setPage} open={open} onOpen={setOpenId} />
+      <Documents project={project} />
+      <Audit project={project} page={auditPage} onPage={setAuditPage} />
+    </div>
+  );
+}
+
 export function KpiProjectView({ projectId }: { projectId: string }) {
   const project = getKpiProject(projectId);
   const [role, setRole] = useState<string | null>(null);
   const [stateName, setStateName] = useState("");
-  const [tab, setTab] = useState<(typeof tabs)[number]>("Overview");
-  const [openId, setOpenId] = useState("");
-  const [page, setPage] = useState(1);
-  const [selectedPin, setSelectedPin] = useState("");
 
   useEffect(() => {
     const session = getSession();
@@ -49,29 +71,10 @@ export function KpiProjectView({ projectId }: { projectId: string }) {
     return <EmptyState title="Project not available" message="This project is outside your KPI Dashboard view." />;
   }
 
-  const open = project.kpis.find((kpi) => kpi.id === openId) ?? null;
   return (
     <div className="page">
-      <header className="page-head">
-        <div>
-          <p className="crumb"><Link href="/kpi-dashboard">KPI Dashboard</Link></p>
-          <h1>{project.name}</h1>
-          <p>{project.component}</p>
-        </div>
-        <StatusBadge status={project.status} />
-      </header>
-      <div className="kdash-tabs" role="tablist">
-        {tabs.map((item) => (
-          <button key={item} type="button" className={tab === item ? "active" : ""} onClick={() => setTab(item)}>{item}</button>
-        ))}
-      </div>
-      {tab === "Overview" ? <Overview project={project} /> : null}
-      {tab === "Locations" ? <Locations project={project} selectedPin={selectedPin} onSelect={setSelectedPin} /> : null}
-      {tab === "Activities" ? <Activities project={project} /> : null}
-      {tab === "Implementation Agencies" ? <Agencies project={project} /> : null}
-      {tab === "KPIs" ? <Kpis project={project} page={page} onPage={setPage} open={open} onOpen={setOpenId} /> : null}
-      {tab === "Documents" ? <Documents project={project} /> : null}
-      {tab === "Audit Trail" ? <Audit project={project} /> : null}
+      <p className="crumb"><Link href="/kpi-dashboard">KPI Dashboard</Link></p>
+      <ProjectView key={project.id} project={project} />
     </div>
   );
 }
@@ -80,7 +83,7 @@ function Overview({ project }: { project: DashProject }) {
   const used = Math.round((project.utilised / project.approvedCost) * 100);
   return (
     <section className="panel">
-      <header><h2>Project details</h2></header>
+      <header><h2>Overview</h2><p>Project details, funding, and status.</p></header>
       <dl className="kdash-detail">
         <div><dt>Component</dt><dd>{componentShort(project.component)}</dd></div>
         <div><dt>Status</dt><dd>{project.status}</dd></div>
@@ -118,12 +121,21 @@ function Locations({ project, selectedPin, onSelect }: { project: DashProject; s
 function Activities({ project }: { project: DashProject }) {
   return (
     <section className="panel">
-      <header><h2>Activities</h2></header>
-      <ul className="kdash-brief">
-        {project.activities.map((activity) => (
-          <li key={activity}><span>{activity}</span><strong>{averagePercent(project.kpis.filter((kpi) => kpi.activity === activity))}%</strong></li>
-        ))}
-      </ul>
+      <header><h2>Activities</h2><p>Implementation progress is the average achievement of the KPIs linked to each activity.</p></header>
+      <div className="kdash-bars">
+        {project.activities.map((activity) => {
+          const rows = project.kpis.filter((kpi) => kpi.activity === activity);
+          const value = averagePercent(rows);
+          const verified = rows.filter((kpi) => kpi.status === "Verified").length;
+          return (
+            <div key={activity} className="kdash-pair">
+              <span>{activity}<small className="cell-sub">{verified}/{rows.length} verified</small></span>
+              <i><b className="achieved" style={{ width: `${Math.min(value, 100)}%` }} /></i>
+              <strong>{value}%</strong>
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -131,7 +143,7 @@ function Activities({ project }: { project: DashProject }) {
 function Agencies({ project }: { project: DashProject }) {
   return (
     <section className="panel projects-table">
-      <header><h2>Agency, location, and activity</h2></header>
+      <header><h2>Implementation agencies</h2><p>Each agency is mapped to the locations and activities it carries out.</p></header>
       <DataTable
         rows={project.links}
         rowKey={(row) => `${row.agency}:${row.locationId}:${row.activity}`}
@@ -214,16 +226,20 @@ function Documents({ project }: { project: DashProject }) {
   );
 }
 
-function Audit({ project }: { project: DashProject }) {
-  const kpiEvents = project.kpis.map((kpi) => {
-    const latest = kpi.history[kpi.history.length - 1];
-    return { date: latest.date, actor: latest.actor, action: `${kpi.name} · ${latest.action}`, note: latest.note };
-  });
+function Audit({ project, page, onPage }: { project: DashProject; page: number; onPage: (page: number) => void }) {
+  const kpiEvents = project.kpis.flatMap((kpi) => kpi.history.map((item) => ({
+    date: item.date,
+    actor: item.actor,
+    action: `${kpi.name} · ${item.action}`,
+    note: item.note,
+  })));
+  const rows = [...project.audit, ...kpiEvents];
+  const visible = rows.slice((page - 1) * 8, page * 8);
   return (
     <section className="panel projects-table">
-      <header><h2>Audit trail</h2><p>Submission, review, and approval history.</p></header>
+      <header><h2>Audit trail</h2><p>Submission, review, approval, and status changes for this project and its KPI reports.</p></header>
       <DataTable
-        rows={[...project.audit, ...kpiEvents]}
+        rows={visible}
         rowKey={(row) => `${row.date}:${row.action}:${row.note}`}
         columns={[
           { key: "date", header: "Date", render: (row) => row.date },
@@ -232,6 +248,7 @@ function Audit({ project }: { project: DashProject }) {
           { key: "note", header: "Note", render: (row) => row.note },
         ]}
       />
+      <Pagination page={page} pageSize={8} total={rows.length} onPage={onPage} />
     </section>
   );
 }
