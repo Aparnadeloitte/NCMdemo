@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CentralPreview } from "@/components/central/CentralPreview";
-import { PolygonSketch } from "@/components/central/PolygonSketch";
+import { PolygonSketch, square } from "@/components/central/PolygonSketch";
 import { EmptyState } from "@/components/ui/Feedback";
 import { agencyById, agencyDirectory, agenciesForActivity, blankActivity, blankAssignment, blankKpi, blankLocation, emptyCentralProject, financialYears, fundingSources, locationLabel, ncmComponents, standardKpis } from "@/data/central";
-import { districtsByState, states } from "@/data/options";
+import { districtCentroid, districtsByState, stateCentroids, states } from "@/data/options";
 import { getSession } from "@/lib/session";
 import { saveCentralDraft, submitCentralProject } from "@/services/central-projects.service";
 import type { CentralAgencyAssignment, CentralKpi, CentralLocation, CentralProject } from "@/types/domain";
@@ -30,7 +30,7 @@ function validate(draft: CentralProject, step: number) {
     for (const location of draft.locations) {
       if (!location.state) return "Select a state or UT for every location.";
       if (location.mode === "manual" && (!location.district || !location.site.trim())) return "Enter the district and site, or switch that location to a map boundary.";
-      if (location.mode === "map" && location.polygon.length < 3) return "Draw at least three points for each mapped location.";
+      if (location.mode === "map" && !location.polygon.some((ring) => ring.length >= 3)) return "Draw at least one closed shape (three or more points) for each mapped location.";
     }
     if (!draft.totalCost.trim() || !draft.sanctioned.trim() || !draft.releaseDetails.trim()) return "Complete the funding details.";
   }
@@ -218,12 +218,25 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
           {draft.locations.map((location, index) => {
             const state = states.find((item) => item.label === location.state);
             const districts = state ? districtsByState[state.value] ?? [] : [];
+            const district = districts.find((item) => item.label === location.district);
+            const mapCenter = state ? (district ? districtCentroid(state.value, district.value) : stateCentroids[state.value]) : undefined;
             return (
               <article key={location.id} className="location-card">
                 <header className="proposal-actions"><strong>Location {index + 1}</strong><button className="text-link" type="button" onClick={() => patch({ locations: draft.locations.filter((item) => item.id !== location.id) })}>Remove</button></header>
                 <div className="choice-row">
                   <label><input type="radio" name={`mode-${location.id}`} checked={location.mode === "manual"} onChange={() => patchLocation(location.id, { mode: "manual" })} /> Enter location</label>
-                  <label><input type="radio" name={`mode-${location.id}`} checked={location.mode === "map"} onChange={() => patchLocation(location.id, { mode: "map" })} /> Draw polygon on map</label>
+                  <label>
+                    <input
+                      type="radio"
+                      name={`mode-${location.id}`}
+                      checked={location.mode === "map"}
+                      onChange={() => {
+                        const hasDrawing = location.polygon.some((ring) => ring.length > 0);
+                        if (!hasDrawing && mapCenter) patchLocation(location.id, { mode: "map", polygon: [square(mapCenter), []] });
+                        else patchLocation(location.id, { mode: "map" });
+                      }}
+                    /> Draw polygon on map
+                  </label>
                 </div>
                 <div className="form-grid">
                   <label className="field"><span>State / UT</span>
@@ -233,7 +246,19 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                     </select>
                   </label>
                   <label className="field"><span>District</span>
-                    <select value={location.district} onChange={(event) => patchLocation(location.id, { district: event.target.value })}>
+                    <select
+                      value={location.district}
+                      onChange={(event) => {
+                        const districtLabel = event.target.value;
+                        const nextDistrict = districts.find((item) => item.label === districtLabel);
+                        if (location.mode === "map" && state && nextDistrict) {
+                          const center = districtCentroid(state.value, nextDistrict.value) ?? stateCentroids[state.value];
+                          patchLocation(location.id, { district: districtLabel, polygon: center ? [square(center), []] : location.polygon });
+                        } else {
+                          patchLocation(location.id, { district: districtLabel });
+                        }
+                      }}
+                    >
                       <option value="">Select</option>
                       {districts.map((item) => <option key={item.value}>{item.label}</option>)}
                     </select>
@@ -244,7 +269,13 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                     <label className="field span-2"><span>Boundary label</span><input value={location.site} placeholder="Optional name for this polygon" onChange={(event) => patchLocation(location.id, { site: event.target.value })} /></label>
                   )}
                 </div>
-                {location.mode === "map" ? <PolygonSketch points={location.polygon} onChange={(polygon) => patchLocation(location.id, { polygon })} /> : null}
+                {location.mode === "map" ? (
+                  <PolygonSketch
+                    rings={location.polygon}
+                    onChange={(polygon) => patchLocation(location.id, { polygon })}
+                    center={mapCenter}
+                  />
+                ) : null}
               </article>
             );
           })}

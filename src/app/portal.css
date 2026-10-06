@@ -616,7 +616,7 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 .doc-summary { margin: 8px 0 16px; padding-left: 18px; color: #24384c; font-size: 14px; }
 .modal h3 { margin: 8px 0; font-size: 15px; }
 .campaign-steps.steps-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-.sketch-map { height: 280px; margin-top: 8px; border-radius: 10px; overflow: hidden; }
+.sketch-map { height: 600px; margin-top: 8px; border-radius: 10px; overflow: hidden; }
 .location-card, .agency-card { margin-top: 16px; padding: 18px; border: 1px solid #e6edf5; border-radius: 12px; }
 .check-grid { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0 12px; }
 .check-grid label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }

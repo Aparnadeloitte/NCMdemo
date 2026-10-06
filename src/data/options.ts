@@ -63,6 +63,62 @@ export const states: FieldOption[] = [
   { label: "Lakshadweep", value: "lakshadweep" },
 ];
 
+// Approximate coastal-belt centroid per state/UT, used to center the map and seed a starter boundary.
+export const stateCentroids: Record<string, [number, number]> = {
+  gujarat: [21.5, 70.5],
+  maharashtra: [17.9, 73.3],
+  goa: [15.4, 74.0],
+  karnataka: [13.9, 74.5],
+  kerala: [10.3, 76.2],
+  "tamil-nadu": [11.1, 79.8],
+  "andhra-pradesh": [16.3, 81.0],
+  odisha: [19.8, 85.8],
+  "west-bengal": [21.9, 88.4],
+  puducherry: [11.93, 79.83],
+  andaman: [11.7, 92.7],
+  lakshadweep: [10.57, 72.64],
+};
+
+// Approximate real coordinates (district HQ / coastal reference point) for each district
+// in districtsByState below, so the map centers/draws on the actual district, not a
+// pseudo-random offset.
+const districtCentroids: Record<string, [number, number]> = {
+  kachchh: [23.25, 69.67],
+  jamnagar: [22.47, 70.07],
+  bhavnagar: [21.76, 72.15],
+  mumbai: [19.08, 72.88],
+  raigad: [18.52, 73.18],
+  ratnagiri: [16.99, 73.3],
+  sindhudurg: [16.02, 73.68],
+  "north-goa": [15.59, 73.81],
+  "south-goa": [15.17, 74.0],
+  "uttara-kannada": [14.8, 74.7],
+  udupi: [13.34, 74.75],
+  "dakshina-kannada": [12.87, 74.88],
+  thiruvananthapuram: [8.52, 76.94],
+  ernakulam: [9.98, 76.28],
+  kozhikode: [11.26, 75.78],
+  chennai: [13.08, 80.27],
+  cuddalore: [11.75, 79.77],
+  nagapattinam: [10.76, 79.84],
+  ramanathapuram: [9.37, 78.83],
+  visakhapatnam: [17.69, 83.22],
+  nellore: [14.44, 79.99],
+  krishna: [16.17, 81.14],
+  puri: [19.8, 85.83],
+  kendrapara: [20.5, 86.42],
+  balasore: [21.49, 86.93],
+  "south-24-parganas": [21.93, 88.4],
+  "purba-medinipur": [21.78, 87.75],
+  "puducherry-district": [11.93, 79.83],
+  "south-andaman": [11.62, 92.72],
+  kavaratti: [10.57, 72.64],
+};
+
+export function districtCentroid(stateValue: string, districtValue: string): [number, number] | undefined {
+  return districtCentroids[districtValue] ?? stateCentroids[stateValue];
+}
+
 export const districtsByState: Record<string, FieldOption[]> = {
   gujarat: [
     { label: "Kachchh", value: "kachchh" },
