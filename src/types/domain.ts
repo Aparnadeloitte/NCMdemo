@@ -223,6 +223,7 @@ export type CentralKpi = {
   frequency: string;
   activityId: string;
   evidence: string;
+  noEvidence: boolean;
 };
 
 export type CentralProjectStatus = "draft" | "submitted" | "returned" | "approved" | "verified";
@@ -242,6 +243,7 @@ export type CentralProject = {
   fundingSource: string;
   sanctioned: string;
   releaseDetails: string;
+  releaseDocument: string;
   financialYear: string;
   activities: CentralActivity[];
   agencies: CentralAgencyAssignment[];

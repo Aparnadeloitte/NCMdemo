@@ -222,6 +222,7 @@ export function emptyCentralProject(createdBy: string): CentralProject {
     fundingSource: fundingSources[0],
     sanctioned: "",
     releaseDetails: "",
+    releaseDocument: "",
     financialYear: "2027-28",
     activities: [{ id: rowId("act"), name: "", description: "", start: "2027-04-01", end: "2027-09-30", milestone: "" }],
     agencies: [],
@@ -256,5 +257,6 @@ export function blankKpi(activityId = ""): CentralKpi {
     frequency: standard.frequency,
     activityId,
     evidence: "",
+    noEvidence: false,
   };
 }

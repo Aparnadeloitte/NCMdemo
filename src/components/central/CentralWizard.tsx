@@ -32,7 +32,7 @@ function validate(draft: CentralProject, step: number) {
       if (!location.state) return "Select a state or UT for every location.";
       if (!location.district || !location.site.trim()) return "Enter the district and site for every location.";
     }
-    if (!draft.totalCost.trim() || !draft.sanctioned.trim() || !draft.releaseDetails.trim()) return "Complete the funding details.";
+    if (!draft.sanctioned.trim() || !draft.releaseDetails.trim()) return "Complete the funding details.";
   }
   if (step === 2) {
     if (!draft.activities.length) return "Add at least one activity.";
@@ -54,7 +54,7 @@ function validate(draft: CentralProject, step: number) {
         continue;
       }
       if (!kpi.name.trim() || !kpi.unit.trim() || !kpi.baseline.trim() || !kpi.target.trim() || !kpi.frequency || !kpi.activityId) return "Complete every standard KPI, including the activity it belongs to.";
-      if (!kpi.evidence.trim() || !kpi.evidence.includes(".")) return "Upload a location photo or map for each standard KPI.";
+      if (!kpi.noEvidence && (!kpi.evidence.trim() || !kpi.evidence.includes("."))) return "Upload a location photo or map for each standard KPI, or select “No” for evidence.";
       if (!agenciesForActivity(draft, kpi.activityId).length) return `Tag an agency to the activity used by “${kpi.name || "this KPI"}”.`;
     }
   }
@@ -360,11 +360,20 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
           <div className="add-row locations-add-row"><button className="btn-ghost" type="button" onClick={() => patch({ locations: [...draft.locations, blankLocation()] })}>+ Add More</button></div>
           <h2 className="proposal-section-heading">Funding details</h2>
           <div className="form-grid">
-            <label className="field"><span>Total approved project cost</span><input value={draft.totalCost} placeholder="₹2.20 crore" onChange={(event) => patch({ totalCost: event.target.value })} /></label>
             <label className="field"><span>Funding source</span><input value={draft.fundingSource} placeholder="NCM 2.0 central share" onChange={(event) => patch({ fundingSource: event.target.value })} /></label>
             <label className="field"><span>Sanctioned amount</span><input value={draft.sanctioned} onChange={(event) => patch({ sanctioned: event.target.value })} /></label>
             <label className="field"><span>Financial year</span><select value={draft.financialYear} onChange={(event) => patch({ financialYear: event.target.value })}>{financialYears.map((item) => <option key={item}>{item}</option>)}</select></label>
             <label className="field span-2"><span>Fund allocation / release details</span><textarea rows={2} value={draft.releaseDetails} onChange={(event) => patch({ releaseDetails: event.target.value })} /></label>
+            <label className="field span-2"><span>Supporting document (optional)</span>
+              <div className="upload">
+                <img src="/images/UploadSimple.svg" alt="" />
+                <span>
+                  <strong>{draft.releaseDocument || "Upload file"}</strong>
+                  <small>{draft.releaseDocument ? "Click to replace the file" : "Click to choose a file"}</small>
+                </span>
+                <input type="file" onChange={(event) => patch({ releaseDocument: event.target.files?.[0]?.name ?? "" })} />
+              </div>
+            </label>
           </div>
         </section>
       ) : null}
@@ -479,14 +488,20 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                         </select>
                       </label>
                       <label className="field span-2"><span>Evidence</span>
-                        <div className="upload">
-                          <img src="/images/UploadSimple.svg" alt="" />
-                          <span>
-                            <strong>{kpi.evidence || "Upload file"}</strong>
-                            <small>{kpi.evidence ? "Click to replace the file" : "Click to choose a location photo, geo map, or similar file"}</small>
-                          </span>
-                          <input type="file" accept="image/*,.pdf" onChange={(event) => patchKpi(kpi.id, { evidence: event.target.files?.[0]?.name ?? "" })} />
+                        <div className="choice-row">
+                          <label><input type="checkbox" checked={!kpi.noEvidence} onChange={() => patchKpi(kpi.id, { noEvidence: false })} /> Yes</label>
+                          <label><input type="checkbox" checked={!!kpi.noEvidence} onChange={() => patchKpi(kpi.id, { noEvidence: true, evidence: "" })} /> No</label>
                         </div>
+                        {kpi.noEvidence ? null : (
+                          <div className="upload">
+                            <img src="/images/UploadSimple.svg" alt="" />
+                            <span>
+                              <strong>{kpi.evidence || "Upload file"}</strong>
+                              <small>{kpi.evidence ? "Click to replace the file" : "Click to choose a location photo, geo map, or similar file"}</small>
+                            </span>
+                            <input type="file" accept="image/*,.pdf" onChange={(event) => patchKpi(kpi.id, { evidence: event.target.files?.[0]?.name ?? "" })} />
+                          </div>
+                        )}
                       </label>
                     </div>
                   </>
