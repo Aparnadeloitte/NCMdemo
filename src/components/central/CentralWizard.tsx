@@ -6,14 +6,13 @@ import { CentralPreview } from "@/components/central/CentralPreview";
 import { PolygonSketch, square } from "@/components/central/PolygonSketch";
 import { EmptyState } from "@/components/ui/Feedback";
 import { TrashIcon } from "@/components/ui/icons";
-import { agencyById, agencyDirectory, agenciesForActivity, blankActivity, blankAssignment, blankKpi, blankLocation, emptyCentralProject, financialYears, locationLabel, ncmComponents, rowId, standardKpis } from "@/data/central";
+import { agencyById, agenciesForActivity, agencyTypes, blankActivity, blankAssignment, blankKpi, blankLocation, emptyCentralProject, financialYears, listAgencyRecords, locationLabel, ncmComponents, rowId, standardKpis } from "@/data/central";
 import { downloadKpiTemplate, readKpiTemplate } from "@/lib/kpi-template";
 import { districtCentroid, districtsByState, siteCentroid, sitesByDistrict, stateCentroids, states } from "@/data/options";
 import { getSession } from "@/lib/session";
 import { saveCentralDraft, submitCentralProject } from "@/services/central-projects.service";
 import type { CentralAgencyAssignment, CentralKpi, CentralLocation, CentralProject } from "@/types/domain";
 
-const agencyTypes = [...new Set(agencyDirectory.map((item) => item.type))];
 
 const steps = [
   { id: 1, label: "Basic Details & Funding", hint: "Definition, locations and budget" },
@@ -106,7 +105,7 @@ function AgencyNameField({ type, agencyId, onSelect }: { type: string; agencyId:
   const selected = agencyById(agencyId);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const choices = agencyDirectory.filter((item) => item.type === type && item.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const choices = listAgencyRecords().filter((item) => item.type === type && item.name.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
     <label className="field combo">
@@ -438,7 +437,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                       if (agency && agency.type !== next) patchAgency(assignment.id, { agencyId: "" });
                     }}>
                       <option value="">Select</option>
-                      {agencyTypes.map((item) => <option key={item}>{item}</option>)}
+                      {agencyTypes().map((item) => <option key={item}>{item}</option>)}
                     </select>
                   </label>
                   <AgencyNameField type={type} agencyId={assignment.agencyId} onSelect={(agencyId) => patchAgency(assignment.id, { agencyId })} />

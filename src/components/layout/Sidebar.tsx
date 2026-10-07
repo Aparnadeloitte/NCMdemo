@@ -12,7 +12,7 @@ const items = [
   { href: "/documents", label: "Documents", icon: "/images/document_sidemenu.svg" },
   { href: "/approvals", label: "Approvals", icon: "/images/approvals_sidemenu.svg" },
   { href: "/grievances", label: "Grievances", icon: "/images/Grievances_sidemenu.svg" },
-  { href: "/users", label: "Users", icon: "/images/User_sidemenu.svg" },
+  { href: "/users", label: "User Management", icon: "/images/User_sidemenu.svg" },
   { href: "/database", label: "Master Data", icon: "/images/Database_sidemenu.svg" },
 ];
 

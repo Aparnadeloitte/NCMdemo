@@ -180,8 +180,52 @@ export function rowId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+const CREATED_AGENCIES_KEY = "ncm.created.agencies";
+
+function readCreatedAgencies(): AgencyRecord[] {
+  if (typeof window === "undefined") return [];
+  const raw = localStorage.getItem(CREATED_AGENCIES_KEY);
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed as AgencyRecord[] : [];
+  } catch {
+    return [];
+  }
+}
+
+export function listAgencyRecords() {
+  const ids = new Set(agencyDirectory.map((item) => item.id));
+  return [...agencyDirectory, ...readCreatedAgencies().filter((item) => !ids.has(item.id))];
+}
+
+export function agencyTypes() {
+  return [...new Set(listAgencyRecords().map((item) => item.type))].sort((a, b) => a.localeCompare(b));
+}
+
+export function addAgencyRecord(type: string, name: string) {
+  const trimmedType = type.trim();
+  const trimmedName = name.trim();
+  if (!trimmedType || !trimmedName) throw new Error("Enter an agency type and an agency name.");
+  const existing = listAgencyRecords().find((item) => item.type.toLowerCase() === trimmedType.toLowerCase() && item.name.toLowerCase() === trimmedName.toLowerCase());
+  if (existing) throw new Error("That agency is already listed under this type.");
+  const record: AgencyRecord = {
+    id: rowId("agy"),
+    name: trimmedName,
+    type: trimmedType,
+    contact: trimmedName,
+    designation: "",
+    email: "",
+    mobile: "",
+    portalUser: "",
+  };
+  const created = readCreatedAgencies();
+  localStorage.setItem(CREATED_AGENCIES_KEY, JSON.stringify([record, ...created]));
+  return record;
+}
+
 export function agencyById(id: string) {
-  return agencyDirectory.find((item) => item.id === id) ?? null;
+  return listAgencyRecords().find((item) => item.id === id) ?? null;
 }
 
 export function locationLabel(location: CentralLocation) {

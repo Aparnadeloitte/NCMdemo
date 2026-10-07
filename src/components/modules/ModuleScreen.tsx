@@ -5,6 +5,7 @@ import { CoastalMap } from "@/components/dashboard/CoastalMap";
 import { StateApprovalQueue } from "@/components/state-projects/StateApprovalQueue";
 import { DataTable, Pagination } from "@/components/ui/DataTable";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/ui/Feedback";
+import { UserDirectory } from "@/components/users/UserDirectory";
 import { directoryUsers } from "@/data/auth";
 import { states } from "@/data/options";
 import { getSession } from "@/lib/session";
@@ -26,6 +27,7 @@ type AiReviewResult = {
 };
 
 export function ModuleScreen({ moduleId }: { moduleId: ModuleId }) {
+  if (moduleId === "users") return <UserDirectory />;
   if (moduleId === "map") {
     return (
       <div className="page">
