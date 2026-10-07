@@ -20,7 +20,9 @@ export function CentralProjectList() {
   const [role, setRole] = useState("");
   const [email, setEmail] = useState("");
   const [rows, setRows] = useState<CentralProject[]>([]);
+  const [welcome, setWelcome] = useState<string | null>(null);
   useEffect(() => {
+    setWelcome(new URLSearchParams(window.location.search).get("welcome"));
     const session = getSession();
     const nextRole = session?.role ?? "";
     const nextEmail = session?.identifier ?? "";
@@ -28,7 +30,7 @@ export function CentralProjectList() {
     setEmail(nextEmail);
     setRows(nextRole === "State user" ? listApprovedCentralProjects() : listOwnCentralProjects(nextEmail));
   }, []);
-  const title = role === "State user" ? "Central Projects" : "Central Projects";
+  const title = role === "State user" ? "My Projects" : "Central Projects";
   const copy = role === "State user"
     ? "Projects approved by the NCM admin."
     : "Projects you have drafted or sent for review.";
@@ -38,6 +40,7 @@ export function CentralProjectList() {
         <div><h1>{title}</h1><p>{copy}</p></div>
         {role === "Central user" ? <Link className="btn-primary" href="/projects/new">Create New Project</Link> : null}
       </header>
+      {welcome ? <p className="welcome" role="status">Access request <strong>{welcome}</strong> has been submitted for review.</p> : null}
       {rows.length === 0 ? <section className="panel"><p>No projects in this list yet.</p></section> : (
         <section className="panel">
           <table className="proposal-table">

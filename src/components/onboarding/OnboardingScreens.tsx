@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { PortalHeader } from "@/components/layout/PortalHeader";
 import { DynamicForm } from "@/components/forms/DynamicForm";
 import { LoadingState } from "@/components/ui/Feedback";
+import { getSession } from "@/lib/session";
 import { useSessionGuard } from "@/lib/use-session";
 import { labelFor, pickValues, type FormFieldSchema, type FormSchema } from "@/schemas/form";
 import {
@@ -140,7 +141,8 @@ export function ConfirmationStep() {
     try {
       await saveOnboardingStep({ confirmed: "yes" });
       const receipt = await submitOnboarding();
-      router.push(`/projects?welcome=${encodeURIComponent(receipt.referenceId)}`);
+      const destination = getSession()?.role === "State user" ? "/central-projects" : "/projects";
+      router.push(`${destination}?welcome=${encodeURIComponent(receipt.referenceId)}`);
     } catch (caught) {
       setSubmitError(caught instanceof Error ? caught.message : "Unable to submit your access request.");
     } finally {
@@ -167,7 +169,7 @@ export function ConfirmationStep() {
           <div className="form-actions confirmation-actions">
             <button className="btn-ghost" type="button" onClick={() => router.push("/onboarding/organization")} disabled={submitting}>Back</button>
             <button className="btn-primary" type="button" onClick={completeOnboarding} disabled={submitting}>
-              {submitting ? "Completing…" : "Complete & Go to Projects"}
+              {submitting ? "Completing…" : "Complete & Continue"}
               {submitting ? null : <ArrowRightIcon />}
             </button>
           </div>

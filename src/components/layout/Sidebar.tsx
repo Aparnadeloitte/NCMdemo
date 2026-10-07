@@ -17,12 +17,11 @@ const items = [
 ];
 
 const roleItem: Record<string, { href: string; label: string; icon: string }[]> = {
-  "Central user": [{ href: "/central-projects", label: "Central Projects", icon: "/images/document_sidemenu.svg" }],
   "Admin user": [
     { href: "/central-review", label: "Project Review", icon: "/images/approvals_sidemenu.svg" },
     { href: "/kpi-review", label: "KPI Review", icon: "/images/MRV Data_sidemenu.svg" },
   ],
-  "State user": [{ href: "/central-projects", label: "Central Projects", icon: "/images/document_sidemenu.svg" }],
+  "State user": [{ href: "/central-projects", label: "My Projects", icon: "/images/document_sidemenu.svg" }],
   "Agency user": [{ href: "/my-projects", label: "My Projects", icon: "/images/project_sidemenu.svg" }],
 };
 
@@ -32,7 +31,7 @@ export function Sidebar({ open, onClose, role }: { open: boolean; onClose: () =>
   const kpiItem = { href: "/kpi-dashboard", label: "KPI Dashboard", icon: "/images/Grid_dashboard.svg" };
   const showKpi = role === "State user" || role === "Central user";
   const primary = showKpi ? [kpiItem, ...items.slice(0, 3)] : items.slice(0, 3);
-  const nav = [...primary, ...extra, ...items.slice(3)];
+  const nav = [...primary.filter((item) => role !== "State user" || item.href !== "/projects"), ...extra, ...items.slice(3)];
   return (
     <>
       <button className={`sidebar-backdrop${open ? " show" : ""}`} type="button" aria-label="Close menu" onClick={onClose} />
