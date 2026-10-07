@@ -80,7 +80,7 @@
 .upload img { width: 32px; height: 32px; }
 .upload strong, .upload small { display: block; }
 .upload small { color: #8b96a3; font-size: 12px; }
-.upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.upload input { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 .btn-primary, .btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: 8px; font-weight: 700; cursor: pointer; }
 .btn-primary { border: 0; background: var(--btn); color: #fff; text-decoration: none; }
@@ -769,6 +769,7 @@ dl.kdash-detail { margin: 0; }
 .sent-doc { width: 83px; height: 83px; object-fit: contain; }
 .sent-ready strong { color: #121212; font-size: 18px; }
 .sent-ready p { margin: 0; max-width: 280px; color: #66788a; font-size: 14px; line-height: 1.45; }
+.kpi-template-actions { display: flex; }
 .kpi-files { display: grid; gap: 6px; margin-top: 8px; }
 .kpi-files ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
 .kpi-files li { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #526070; font-size: 13px; }

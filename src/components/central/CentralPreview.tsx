@@ -84,7 +84,7 @@ export function CentralPreview({ project }: { project: CentralProject }) {
           <tbody>
             {project.kpis.map((kpi) => (
               <tr key={kpi.id}>
-                {kpi.source === "custom" ? (
+                {kpi.source === "custom" && !kpi.name.trim() ? (
                   <td colSpan={5}>Custom KPI template: {kpi.templateFile || "—"}</td>
                 ) : (
                   <>

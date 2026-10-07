@@ -6,7 +6,8 @@ import { CentralPreview } from "@/components/central/CentralPreview";
 import { PolygonSketch, square } from "@/components/central/PolygonSketch";
 import { EmptyState } from "@/components/ui/Feedback";
 import { TrashIcon } from "@/components/ui/icons";
-import { agencyById, agencyDirectory, agenciesForActivity, blankActivity, blankAssignment, blankKpi, blankLocation, emptyCentralProject, financialYears, locationLabel, ncmComponents, standardKpis } from "@/data/central";
+import { agencyById, agencyDirectory, agenciesForActivity, blankActivity, blankAssignment, blankKpi, blankLocation, emptyCentralProject, financialYears, locationLabel, ncmComponents, rowId, standardKpis } from "@/data/central";
+import { downloadKpiTemplate, readKpiTemplate } from "@/lib/kpi-template";
 import { districtCentroid, districtsByState, siteCentroid, sitesByDistrict, stateCentroids, states } from "@/data/options";
 import { getSession } from "@/lib/session";
 import { saveCentralDraft, submitCentralProject } from "@/services/central-projects.service";
@@ -49,12 +50,9 @@ function validate(draft: CentralProject, step: number) {
   if (step === 4) {
     if (!draft.kpis.length) return "Add at least one KPI.";
     for (const kpi of draft.kpis) {
-      if (kpi.source === "custom") {
-        if (!kpi.templateFile.trim()) return "Upload the KPI template for each custom KPI.";
-        continue;
-      }
-      if (!kpi.name.trim() || !kpi.unit.trim() || !kpi.baseline.trim() || !kpi.target.trim() || !kpi.frequency || !kpi.activityId) return "Complete every standard KPI, including the activity it belongs to.";
-      if (!kpi.noEvidence && (!kpi.evidence.trim() || !kpi.evidence.includes("."))) return "Upload a location photo or map for each standard KPI, or select “No” for evidence.";
+      if (kpi.source === "custom" && !kpi.templateFile.trim()) return "Upload the KPI template for each custom KPI.";
+      if (!kpi.name.trim() || !kpi.unit.trim() || !kpi.baseline.trim() || !kpi.target.trim() || !kpi.frequency || !kpi.activityId) return "Complete every KPI, including the activity it belongs to.";
+      if (!kpi.noEvidence && (!kpi.evidence.trim() || !kpi.evidence.includes("."))) return "Upload a location photo or map for each KPI, or select “No” for evidence.";
       if (!agenciesForActivity(draft, kpi.activityId).length) return `Tag an agency to the activity used by “${kpi.name || "this KPI"}”.`;
     }
   }
@@ -212,6 +210,29 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
 
   function patchKpi(id: string, partial: Partial<CentralKpi>) {
     setDraft((current) => current ? { ...current, kpis: current.kpis.map((item) => item.id === id ? { ...item, ...partial } : item) } : current);
+  }
+
+  async function importCustomKpis(id: string, file: File | undefined) {
+    if (!file || !draft) return;
+    setError("");
+    try {
+      const rows = await readKpiTemplate(file, draft.activities);
+      setDraft((current) => {
+        if (!current) return current;
+        const index = current.kpis.findIndex((item) => item.id === id);
+        if (index < 0) return current;
+        const imported = rows.map((row, rowIndex) => ({
+          ...current.kpis[index],
+          ...row,
+          id: rowIndex === 0 ? id : rowId("kpi"),
+          source: "custom" as const,
+          templateFile: file.name,
+        }));
+        return { ...current, kpis: [...current.kpis.slice(0, index), ...imported, ...current.kpis.slice(index + 1)] };
+      });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to read the KPI template.");
+    }
   }
 
   async function persist() {
@@ -464,7 +485,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                 <header className="proposal-actions">
                   <div className="choice-row">
                     <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "standard"} onChange={() => { const { evidence: _evidence, ...fields } = standardKpis[0]; patchKpi(kpi.id, { source: "standard", ...fields }); }} /> Standard KPI</label>
-                    <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "custom"} onChange={() => patchKpi(kpi.id, { source: "custom" })} /> Custom KPI</label>
+                    <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "custom"} onChange={() => patchKpi(kpi.id, { source: "custom", templateFile: "", name: "", unit: "", baseline: "", target: "", frequency: "", activityId: "", evidence: "", noEvidence: false })} /> Custom KPI</label>
                   </div>
                   <button className="remove-icon-btn" type="button" aria-label="Remove KPI" onClick={() => patch({ kpis: draft.kpis.filter((item) => item.id !== kpi.id) })}><TrashIcon /></button>
                 </header>
@@ -506,16 +527,52 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                     </div>
                   </>
                 ) : (
-                  <label className="field"><span>Select template</span>
-                    <div className="upload">
-                      <img src="/images/UploadSimple.svg" alt="" />
-                      <span>
-                        <strong>{kpi.templateFile || "Upload file"}</strong>
-                        <small>{kpi.templateFile ? "Click to replace the file" : "Click to choose a file"}</small>
-                      </span>
-                      <input type="file" onChange={(event) => patchKpi(kpi.id, { templateFile: event.target.files?.[0]?.name ?? "" })} />
+                  <>
+                    <div className="kpi-template-actions">
+                      <button className="btn-ghost" type="button" onClick={() => void downloadKpiTemplate(draft.activities)}>Download Excel template</button>
                     </div>
-                  </label>
+                    <label className="field"><span>Upload filled template</span>
+                      <div className="upload">
+                        <img src="/images/UploadSimple.svg" alt="" />
+                        <span>
+                          <strong>{kpi.templateFile || "Upload Excel"}</strong>
+                          <small>{kpi.templateFile ? "Click to replace the workbook. Each row becomes a KPI." : "Use the template. Each row is imported as its own KPI."}</small>
+                        </span>
+                        <input type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" onChange={(event) => { void importCustomKpis(kpi.id, event.target.files?.[0]); event.currentTarget.value = ""; }} />
+                      </div>
+                    </label>
+                    {kpi.templateFile ? (
+                      <div className="form-grid">
+                        <label className="field"><span>KPI</span><input value={kpi.name} onChange={(event) => patchKpi(kpi.id, { name: event.target.value })} /></label>
+                        <label className="field"><span>Unit of measurement</span><input value={kpi.unit} onChange={(event) => patchKpi(kpi.id, { unit: event.target.value })} /></label>
+                        <label className="field"><span>Baseline</span><input value={kpi.baseline} onChange={(event) => patchKpi(kpi.id, { baseline: event.target.value })} /></label>
+                        <label className="field"><span>Target</span><input value={kpi.target} onChange={(event) => patchKpi(kpi.id, { target: event.target.value })} /></label>
+                        <label className="field"><span>Reporting frequency</span><input value={kpi.frequency} onChange={(event) => patchKpi(kpi.id, { frequency: event.target.value })} /></label>
+                        <label className="field"><span>Applicable activity</span>
+                          <select value={kpi.activityId} onChange={(event) => patchKpi(kpi.id, { activityId: event.target.value })}>
+                            <option value="">Select</option>
+                            {draft.activities.map((activity) => <option key={activity.id} value={activity.id}>{activity.name || "Untitled activity"}</option>)}
+                          </select>
+                        </label>
+                        <label className="field span-2"><span>Evidence</span>
+                          <div className="choice-row">
+                            <label><input type="checkbox" checked={!kpi.noEvidence} onChange={() => patchKpi(kpi.id, { noEvidence: false })} /> Yes</label>
+                            <label><input type="checkbox" checked={!!kpi.noEvidence} onChange={() => patchKpi(kpi.id, { noEvidence: true, evidence: "" })} /> No</label>
+                          </div>
+                          {kpi.noEvidence ? null : (
+                            <div className="upload">
+                              <img src="/images/UploadSimple.svg" alt="" />
+                              <span>
+                                <strong>{kpi.evidence || "Upload file"}</strong>
+                                <small>{kpi.evidence ? "Click to replace the file" : "Click to choose a location photo, geo map, or similar file"}</small>
+                              </span>
+                              <input type="file" accept="image/*,.pdf" onChange={(event) => patchKpi(kpi.id, { evidence: event.target.files?.[0]?.name ?? "" })} />
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    ) : null}
+                  </>
                 )}
               </article>
           ))}
