@@ -181,7 +181,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
     <div className="page campaign-page">
       <header className="page-head">
         <div>
-          <h1>Create central project</h1>
+          <h1>Create project</h1>
           <p>Define the project, locations, activities, agencies and KPIs, then send it for admin review.</p>
         </div>
       </header>
