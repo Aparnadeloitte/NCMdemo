@@ -203,6 +203,21 @@ export type CentralActivity = {
   start: string;
   end: string;
   milestone: string;
+  matrixCode?: string;
+  theme?: string;
+  reportingFrequency?: string;
+  subActivities?: CentralSubActivity[];
+};
+
+export type CentralSubActivity = {
+  id: string;
+  matrixCode: string;
+  name: string;
+  start: string;
+  end: string;
+  milestone: string;
+  evidence: string;
+  spatialRelevance: string;
 };
 
 export type CentralAgencyAssignment = {

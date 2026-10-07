@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CentralPreview } from "@/components/central/CentralPreview";
 import { PolygonSketch, square } from "@/components/central/PolygonSketch";
 import { EmptyState } from "@/components/ui/Feedback";
 import { TrashIcon } from "@/components/ui/icons";
+import { activityMatrixForComponent } from "@/data/activity-matrix";
 import { agencyById, agenciesForActivity, agencyTypes, blankActivity, blankAssignment, blankKpi, blankLocation, emptyCentralProject, financialYears, listAgencyRecords, locationLabel, ncmComponents, rowId, standardKpis } from "@/data/central";
 import { downloadKpiTemplate, readKpiTemplate } from "@/lib/kpi-template";
 import { districtCentroid, districtsByState, siteCentroid, sitesByDistrict, stateCentroids, states } from "@/data/options";
 import { getSession } from "@/lib/session";
 import { saveCentralDraft, submitCentralProject } from "@/services/central-projects.service";
-import type { CentralAgencyAssignment, CentralKpi, CentralLocation, CentralProject } from "@/types/domain";
+import type { CentralActivity, CentralAgencyAssignment, CentralKpi, CentralLocation, CentralProject, CentralSubActivity } from "@/types/domain";
 
 
 const steps = [
@@ -38,6 +39,16 @@ function validate(draft: CentralProject, step: number) {
     if (!draft.activities.length) return "Add at least one activity.";
     if (draft.activities.some((item) => !item.name.trim() || !item.description.trim() || !item.start || !item.end || !item.milestone.trim())) {
       return "Complete the name, description, dates and milestone for every activity.";
+    }
+    if (draft.activities.some((item) => item.start > item.end)) return "An activity completion date cannot be before its start date.";
+    if (draft.activities.some((item) => (item.subActivities ?? []).some((subActivity) => !subActivity.name.trim() || !subActivity.start || !subActivity.end || !subActivity.milestone.trim()))) {
+      return "Complete the name, dates and target / milestone for every sub-activity.";
+    }
+    if (draft.activities.some((item) => (item.subActivities ?? []).some((subActivity) => subActivity.start > subActivity.end))) {
+      return "A sub-activity completion date cannot be before its start date.";
+    }
+    if (draft.activities.some((item) => (item.subActivities ?? []).some((subActivity) => item.start && item.end && (subActivity.start < item.start || subActivity.end > item.end)))) {
+      return "Keep each sub-activity within its parent activity dates.";
     }
   }
   if (step === 3) {
@@ -142,6 +153,8 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
   const [pending, setPending] = useState<"save" | "next" | "submit" | null>(null);
   const [reference, setReference] = useState("");
   const [agencyType, setAgencyType] = useState<Record<string, string>>({});
+  const [subActivityChoice, setSubActivityChoice] = useState<Record<string, string>>({});
+  const matrixActivities = useMemo(() => activityMatrixForComponent(draft?.component ?? ""), [draft?.component]);
 
   useEffect(() => {
     if (initial) return;
@@ -201,6 +214,40 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
 
   function patchLocation(id: string, partial: Partial<CentralLocation>) {
     setDraft((current) => current ? { ...current, locations: current.locations.map((item) => item.id === id ? { ...item, ...partial } : item) } : current);
+  }
+
+  function patchActivity(id: string, partial: Partial<CentralActivity>) {
+    setDraft((current) => current ? { ...current, activities: current.activities.map((item) => item.id === id ? { ...item, ...partial } : item) } : current);
+    setError("");
+  }
+
+  function patchSubActivity(activityId: string, subActivityId: string, partial: Partial<CentralSubActivity>) {
+    setDraft((current) => current ? {
+      ...current,
+      activities: current.activities.map((activity) => activity.id === activityId
+        ? { ...activity, subActivities: (activity.subActivities ?? []).map((item) => item.id === subActivityId ? { ...item, ...partial } : item) }
+        : activity),
+    } : current);
+    setError("");
+  }
+
+  function addSubActivity(activityId: string, reference?: { code: string; name: string; evidence: string; spatialRelevance: string }) {
+    if (!draft) return;
+    const activity = draft.activities.find((item) => item.id === activityId);
+    if (!activity) return;
+    if (reference && activity.subActivities?.some((item) => item.matrixCode === reference.code)) return;
+    const subActivity: CentralSubActivity = {
+      id: rowId("sub"),
+      matrixCode: reference?.code ?? "",
+      name: reference?.name ?? "",
+      start: activity.start,
+      end: activity.end,
+      milestone: "",
+      evidence: reference?.evidence ?? "",
+      spatialRelevance: reference?.spatialRelevance ?? "",
+    };
+    patchActivity(activityId, { subActivities: [...(activity.subActivities ?? []), subActivity] });
+    setSubActivityChoice((current) => ({ ...current, [activityId]: "" }));
   }
 
   function patchAgency(id: string, partial: Partial<CentralAgencyAssignment>) {
@@ -302,7 +349,26 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
           <div className="form-grid">
             <label className="field span-2"><span>Project name</span><input value={draft.name} onChange={(event) => patch({ name: event.target.value })} /></label>
             <label className="field span-2"><span>Project type / NCM component</span>
-              <select value={draft.component} onChange={(event) => patch({ component: event.target.value })}>{ncmComponents.map((item) => <option key={item}>{item}</option>)}</select>
+              <select value={draft.component} onChange={(event) => {
+                const component = event.target.value;
+                const allowedCodes = new Set(activityMatrixForComponent(component).map((item) => item.code));
+                patch({
+                  component,
+                  activities: draft.activities.map((activity) => {
+                    if (!activity.matrixCode || allowedCodes.has(activity.matrixCode)) return activity;
+                    return {
+                      ...activity,
+                      matrixCode: "",
+                      theme: "",
+                      reportingFrequency: "",
+                      description: activity.description.startsWith(`${activity.matrixCode}:`) ? activity.name : activity.description,
+                      subActivities: (activity.subActivities ?? []).map((subActivity) => subActivity.matrixCode
+                        ? { ...subActivity, matrixCode: "", evidence: "", spatialRelevance: "" }
+                        : subActivity),
+                    };
+                  }),
+                });
+              }}>{ncmComponents.map((item) => <option key={item}>{item}</option>)}</select>
             </label>
             <label className="field span-2"><span>Project description</span><textarea rows={3} value={draft.description} onChange={(event) => patch({ description: event.target.value })} /></label>
             <label className="field"><span>Start date</span><input type="date" value={draft.start} onChange={(event) => patch({ start: event.target.value })} /></label>
@@ -400,19 +466,97 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
 
       {step === 2 ? (
         <section className="panel proposal-card">
-          <header><h2>Activities</h2><p>Add every activity under this project. The milestone or target is a free-text field.</p></header>
-          {draft.activities.map((activity, index) => (
-            <article key={activity.id} className="location-card">
-              <header className="proposal-actions"><strong>{index + 1}. Activity</strong><button className="remove-icon-btn" type="button" aria-label="Remove activity" onClick={() => patch({ activities: draft.activities.filter((item) => item.id !== activity.id) })}><TrashIcon /></button></header>
-              <div className="form-grid">
-                <label className="field"><span>Activity name</span><input value={activity.name} onChange={(event) => patch({ activities: draft.activities.map((item) => item.id === activity.id ? { ...item, name: event.target.value } : item) })} /></label>
-                <label className="field"><span>Milestone / target</span><input value={activity.milestone} placeholder="100 ha planted" onChange={(event) => patch({ activities: draft.activities.map((item) => item.id === activity.id ? { ...item, milestone: event.target.value } : item) })} /></label>
-                <label className="field span-2"><span>Activity description</span><textarea rows={2} value={activity.description} onChange={(event) => patch({ activities: draft.activities.map((item) => item.id === activity.id ? { ...item, description: event.target.value } : item) })} /></label>
-                <label className="field"><span>Planned start</span><input type="date" value={activity.start} onChange={(event) => patch({ activities: draft.activities.map((item) => item.id === activity.id ? { ...item, start: event.target.value } : item) })} /></label>
-                <label className="field"><span>Planned completion</span><input type="date" value={activity.end} onChange={(event) => patch({ activities: draft.activities.map((item) => item.id === activity.id ? { ...item, end: event.target.value } : item) })} /></label>
-              </div>
-            </article>
-          ))}
+          <header><h2>Activities & sub-activities</h2><p>Organize the project into activities and deliverable sub-activities. Reference options follow the activity matrix for this project type; custom entries are also supported.</p></header>
+          {draft.activities.map((activity, index) => {
+            const reference = matrixActivities.find((item) => item.code === activity.matrixCode);
+            const selectedSubActivities = new Set((activity.subActivities ?? []).map((item) => item.matrixCode).filter(Boolean));
+            const selectedSubActivity = subActivityChoice[activity.id] ?? "";
+            return (
+              <article key={activity.id} className="location-card activity-card">
+                <header className="proposal-actions">
+                  <strong>{index + 1}. Activity{activity.matrixCode ? ` · ${activity.matrixCode}` : ""}</strong>
+                  <button className="remove-icon-btn" type="button" aria-label="Remove activity" onClick={() => patch({ activities: draft.activities.filter((item) => item.id !== activity.id) })}><TrashIcon /></button>
+                </header>
+                <div className="form-grid">
+                  {matrixActivities.length ? (
+                    <label className="field span-2"><span>Activity list</span>
+                      <select
+                        value={reference ? activity.matrixCode : "custom"}
+                        onChange={(event) => {
+                          const selected = matrixActivities.find((item) => item.code === event.target.value);
+                          if (!selected) {
+                            patchActivity(activity.id, {
+                              matrixCode: "",
+                              theme: "",
+                              reportingFrequency: "",
+                              subActivities: (activity.subActivities ?? []).map((subActivity) => subActivity.matrixCode
+                                ? { ...subActivity, matrixCode: "", evidence: "", spatialRelevance: "" }
+                                : subActivity),
+                            });
+                            return;
+                          }
+                          const selectedCodes = new Set(selected.subActivities.map((item) => item.code));
+                          patchActivity(activity.id, {
+                            matrixCode: selected.code,
+                            name: selected.name,
+                            description: `${selected.code}: ${selected.name}`,
+                            theme: selected.theme,
+                            reportingFrequency: selected.frequency,
+                            subActivities: (activity.subActivities ?? []).map((subActivity) => subActivity.matrixCode && !selectedCodes.has(subActivity.matrixCode)
+                              ? { ...subActivity, matrixCode: "", evidence: "", spatialRelevance: "" }
+                              : subActivity),
+                          });
+                        }}
+                      >
+                        <option value="custom">Custom activity</option>
+                        {matrixActivities.map((item) => <option key={item.code} value={item.code}>{item.code} · {item.name}</option>)}
+                      </select>
+                    </label>
+                  ) : null}
+                  {!reference ? <label className="field"><span>Activity name</span><input value={activity.name} onChange={(event) => patchActivity(activity.id, { name: event.target.value })} /></label> : null}
+                  <label className="field"><span>Activity-level milestone / target</span><input value={activity.milestone} placeholder="100 ha planted" onChange={(event) => patchActivity(activity.id, { milestone: event.target.value })} /></label>
+                  <label className="field span-2"><span>Activity description</span><textarea rows={2} value={activity.description} onChange={(event) => patchActivity(activity.id, { description: event.target.value })} /></label>
+                  <label className="field"><span>Planned start</span><input type="date" min={draft.start} max={draft.end} value={activity.start} onChange={(event) => patchActivity(activity.id, { start: event.target.value })} /></label>
+                  <label className="field"><span>Planned completion</span><input type="date" min={activity.start || draft.start} max={draft.end} value={activity.end} onChange={(event) => patchActivity(activity.id, { end: event.target.value })} /></label>
+                </div>
+                {reference ? <p className="field-hint activity-matrix-hint">{reference.theme} · Suggested reporting: {reference.frequency}</p> : null}
+
+                <section className="activity-subactivities" aria-label={`Sub-activities for ${activity.name || `activity ${index + 1}`}`}>
+                  <header><h3>Sub-activities</h3><p>Add selected work items or enter a project-specific sub-activity.</p></header>
+                  {reference ? (
+                    <div className="activity-subactivity-add">
+                      <label className="field"><span>Add from matrix</span>
+                        <select value={selectedSubActivity} onChange={(event) => setSubActivityChoice((current) => ({ ...current, [activity.id]: event.target.value }))}>
+                          <option value="">Select a sub-activity</option>
+                          {reference.subActivities.filter((item) => !selectedSubActivities.has(item.code)).map((item) => <option key={item.code} value={item.code}>{item.code} · {item.name}</option>)}
+                        </select>
+                      </label>
+                      <button className="btn-ghost" type="button" disabled={!selectedSubActivity} onClick={() => {
+                        const selected = reference.subActivities.find((item) => item.code === selectedSubActivity);
+                        if (selected) addSubActivity(activity.id, selected);
+                      }}>Add selected</button>
+                    </div>
+                  ) : null}
+                  <button className="btn-ghost activity-custom-add" type="button" onClick={() => addSubActivity(activity.id)}>+ Add custom sub-activity</button>
+                  {(activity.subActivities ?? []).map((subActivity, subIndex) => (
+                    <article key={subActivity.id} className="activity-subactivity-card">
+                      <header className="proposal-actions">
+                        <strong>Sub-activity {subIndex + 1}{subActivity.matrixCode ? ` · ${subActivity.matrixCode}` : " · Custom"}</strong>
+                        <button className="remove-icon-btn" type="button" aria-label="Remove sub-activity" onClick={() => patchActivity(activity.id, { subActivities: (activity.subActivities ?? []).filter((item) => item.id !== subActivity.id) })}><TrashIcon /></button>
+                      </header>
+                      {!subActivity.matrixCode ? <label className="field"><span>Sub-activity name</span><input value={subActivity.name} onChange={(event) => patchSubActivity(activity.id, subActivity.id, { name: event.target.value })} /></label> : <strong className="activity-subactivity-name">{subActivity.name}</strong>}
+                      <div className="form-grid">
+                        <label className="field"><span>Planned start</span><input type="date" min={activity.start || draft.start} max={activity.end || draft.end} value={subActivity.start} onChange={(event) => patchSubActivity(activity.id, subActivity.id, { start: event.target.value })} /></label>
+                        <label className="field"><span>Planned completion</span><input type="date" min={subActivity.start || activity.start || draft.start} max={activity.end || draft.end} value={subActivity.end} onChange={(event) => patchSubActivity(activity.id, subActivity.id, { end: event.target.value })} /></label>
+                        <label className="field span-2"><span>Sub-activity target / milestone</span><input value={subActivity.milestone} placeholder="Enter the measurable output or completion milestone" onChange={(event) => patchSubActivity(activity.id, subActivity.id, { milestone: event.target.value })} /></label>
+                      </div>
+                      {subActivity.matrixCode ? <p className="field-hint">Suggested evidence: {subActivity.evidence || "Not specified"} · Spatial relevance: {subActivity.spatialRelevance || "Not specified"}</p> : null}
+                    </article>
+                  ))}
+                </section>
+              </article>
+            );
+          })}
           <div className="add-row activities-add-row"><button className="btn-ghost" type="button" onClick={() => patch({ activities: [...draft.activities, blankActivity()] })}>+ Add More</button></div>
         </section>
       ) : null}

@@ -42,16 +42,26 @@ export function CentralPreview({ project }: { project: CentralProject }) {
       <section className="location-card review-kv-card">
         <h3 className="review-subhead">Activities</h3>
         <table className="proposal-table">
-          <thead><tr><th>Activity name</th><th>Milestone / target</th><th>Planned start</th><th>Planned completion</th></tr></thead>
+          <thead><tr><th>Activity / sub-activity</th><th>Matrix code</th><th>Planned dates</th><th>Target / milestone</th><th>Reference guidance</th></tr></thead>
           <tbody>
-            {project.activities.map((activity) => (
-              <tr key={activity.id}>
-                <td>{activity.name}</td>
+            {project.activities.flatMap((activity) => [
+              <tr key={`activity-${activity.id}`}>
+                <td><strong>{activity.name}</strong><small className="cell-sub">{activity.description}</small></td>
+                <td>{activity.matrixCode || "Custom"}</td>
+                <td>{activity.start} to {activity.end}</td>
                 <td>{activity.milestone}</td>
-                <td>{activity.start}</td>
-                <td>{activity.end}</td>
-              </tr>
-            ))}
+                <td>{activity.reportingFrequency || "—"}</td>
+              </tr>,
+              ...(activity.subActivities ?? []).map((subActivity) => (
+                <tr key={`sub-${subActivity.id}`}>
+                  <td className="activity-subitem">Sub-activity: {subActivity.name}</td>
+                  <td>{subActivity.matrixCode || "Custom"}</td>
+                  <td>{subActivity.start} to {subActivity.end}</td>
+                  <td>{subActivity.milestone}</td>
+                  <td>{[subActivity.evidence && `Evidence: ${subActivity.evidence}`, subActivity.spatialRelevance && `Spatial: ${subActivity.spatialRelevance}`].filter(Boolean).join(" · ") || "—"}</td>
+                </tr>
+              )),
+            ])}
           </tbody>
         </table>
       </section>

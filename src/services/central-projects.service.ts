@@ -93,7 +93,10 @@ function toPortalProject(project: CentralProject): NcmProject {
     activities: (project.activities ?? []).map((activity) => ({
       id: activity.id,
       name: activity.name,
-      detail: activity.milestone,
+      detail: [
+        activity.milestone,
+        ...(activity.subActivities ?? []).map((subActivity) => `Sub-activity: ${subActivity.name}${subActivity.milestone ? ` - ${subActivity.milestone}` : ""}`),
+      ].filter(Boolean).join(" · "),
       image: "/images/healthy_coast.svg",
       costAdded: false,
       date: stamp(activity.end),

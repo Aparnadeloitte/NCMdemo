@@ -277,7 +277,7 @@ export function emptyCentralProject(createdBy: string): CentralProject {
 }
 
 export function blankActivity(): CentralActivity {
-  return { id: rowId("act"), name: "", description: "", start: "", end: "", milestone: "" };
+  return { id: rowId("act"), name: "", description: "", start: "", end: "", milestone: "", matrixCode: "", theme: "", reportingFrequency: "", subActivities: [] };
 }
 
 export function blankLocation(): CentralLocation {
