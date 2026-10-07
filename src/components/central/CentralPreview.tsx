@@ -21,7 +21,7 @@ export function CentralPreview({ project }: { project: CentralProject }) {
       <section className="panel proposal-card">
         <header><h2>Locations</h2></header>
         <ul className="doc-summary">
-          {project.locations.map((location) => <li key={location.id}>{locationLabel(location)} · {location.mode === "map" ? "GIS boundary" : "Entered manually"}</li>)}
+          {project.locations.map((location) => <li key={location.id}>{locationLabel(location)} · {location.polygon.some((ring) => ring.length >= 3) ? "GIS boundary drawn" : "No boundary drawn"}</li>)}
         </ul>
       </section>
       <section className="panel proposal-card">
