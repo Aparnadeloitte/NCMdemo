@@ -123,8 +123,8 @@ export function CentralReviewDetail({ projectId }: { projectId: string }) {
     finally { setPending(""); }
   }
   return (
-    <div className="page campaign-page">
-      <header className="page-head"><div><h1>Review {project.name}</h1><p>Draft → Submitted → Admin Review → Approved / Returned for correction</p></div></header>
+    <div className="page campaign-page central-review-detail">
+      <header className="page-head"><div><h1>{project.name}</h1><p>Draft → Submitted → Admin Review → Approved / Returned for correction</p></div></header>
       <CentralPreview project={project} />
       <section className="panel proposal-card">
         <p>Status: <Badge status={project.status} /></p>
