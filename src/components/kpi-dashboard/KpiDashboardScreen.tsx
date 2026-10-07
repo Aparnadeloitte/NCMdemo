@@ -26,6 +26,12 @@ const pinColors: Record<string, string> = {
   "Coastal Wetland": "#149a9a",
 };
 
+function tierColor(value: number) {
+  if (value >= 80) return "#1f9d55";
+  if (value >= 60) return "#d97706";
+  return "#b42318";
+}
+
 type MapFilters = {
   state: string;
   district: string;
@@ -224,40 +230,41 @@ export function KpiDashboardScreen() {
 
       <section className="kdash-grid">
         <ChartPanel title="KPI achievement by State" rows={byState} />
-        <ChartPanel title="KPI achievement by NCM component" rows={byComponent} />
+        <ComponentDonut rows={byComponent} />
         <section className="panel">
           <header><h2>Target vs achieved</h2><p>Average achievement against the approved target.</p></header>
-          <div className="kdash-bars">
+          <div className="bars" style={{ gridTemplateColumns: `repeat(${byGroup.length}, minmax(0, 1fr))` }}>
             {byGroup.map((row) => (
-              <div key={row.label} className="kdash-pair">
-                <span>{row.label}</span>
-                <div>
-                  <i><b style={{ width: "100%" }} /></i>
-                  <i><b className="achieved" style={{ width: `${Math.min(row.value, 100)}%` }} /></i>
+              <div key={row.label} className="bar-col">
+                <div className="bar-track">
+                  <div style={{ height: `${Math.min(row.value, 100)}%`, background: tierColor(row.value) }} />
                 </div>
-                <strong>{row.value}%</strong>
+                <span className="bar-value">{row.value}%</span>
+                <span className="bar-label" title={row.label}>{row.label}</span>
               </div>
             ))}
           </div>
-          <p className="field-hint">Grey is the target. Green is achievement.</p>
+          <p className="field-hint">Bar height is achievement against a 100% target. Colour shows how close it is to target.</p>
         </section>
         <section className="panel">
           <header><h2>Financial utilisation</h2><p>Approved project cost and amount utilised.</p></header>
           <div className="kdash-bars">
             {finance.map((row) => {
               const max = Math.max(...finance.map((item) => item.approved), 1);
+              const color = pinColors[row.label] ?? "#2f6fed";
+              const pct = Math.round((row.used / row.approved) * 100);
               return (
                 <div key={row.label} className="kdash-pair">
                   <span>{row.label}</span>
-                  <div>
-                    <i><b style={{ width: `${(row.approved / max) * 100}%` }} /></i>
-                    <i><b className="achieved" style={{ width: `${(row.used / max) * 100}%` }} /></i>
-                  </div>
-                  <strong>{Math.round((row.used / row.approved) * 100)}%</strong>
+                  <i className="kdash-stack" style={{ width: `${(row.approved / max) * 100}%` }}>
+                    <b style={{ width: `${pct}%`, background: color }} />
+                  </i>
+                  <strong>{pct}%</strong>
                 </div>
               );
             })}
           </div>
+          <p className="field-hint">Bar length is the approved cost share. Fill colour marks the NCM component.</p>
         </section>
         <section className="panel">
           <header><h2>KPI trends</h2><p>Portfolio achievement across reporting periods.</p></header>
@@ -320,7 +327,7 @@ export function KpiDashboardScreen() {
               rows={pageRows}
               rowKey={(row) => row.id}
               columns={[
-                { key: "name", header: "Project", render: (row) => <button type="button" className="text-link" onClick={() => openProject(row.id)}>{row.name}</button> },
+                { key: "name", header: "Project", render: (row) => <button type="button" className="text-link cell-truncate" title={row.name} onClick={() => openProject(row.id)}>{row.name}</button> },
                 { key: "component", header: "Component", render: (row) => componentShort(row.component) },
                 { key: "locations", header: "Location(s)", render: (row) => row.locations.map((location) => location.name).join(", ") },
                 { key: "agency", header: "Agency", render: (row) => row.agencies.join(", ") },
@@ -363,10 +370,36 @@ function ChartPanel({ title, rows }: { title: string; rows: { label: string; val
         {rows.map((row) => (
           <div key={row.label} className="kdash-pair">
             <span>{row.label}</span>
-            <i><b className="achieved" style={{ width: `${Math.min(row.value, 100)}%` }} /></i>
+            <i><b style={{ width: `${Math.min(row.value, 100)}%`, background: tierColor(row.value) }} /></i>
             <strong>{row.value}%</strong>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+function ComponentDonut({ rows }: { rows: { label: string; value: number }[] }) {
+  const total = rows.reduce((sum, row) => sum + row.value, 0) || 1;
+  const average = Math.round(total / (rows.length || 1));
+  let cursor = 0;
+  const gradient = rows.map((row) => {
+    const start = cursor;
+    cursor += (row.value / total) * 100;
+    return `${pinColors[row.label] ?? "#2f6fed"} ${start}% ${cursor}%`;
+  }).join(", ");
+  return (
+    <section className="panel">
+      <header><h2>KPI achievement by NCM component</h2></header>
+      <div className="donut-wrap status-donut">
+        <div className="donut" style={{ background: `conic-gradient(${gradient})` }} aria-hidden="true">
+          <span className="donut-hub"><small>Avg</small><strong>{average}%</strong></span>
+        </div>
+        <ul>
+          {rows.map((row) => (
+            <li key={row.label}><i style={{ background: pinColors[row.label] ?? "#2f6fed" }} />{row.label}<strong>{row.value}%</strong></li>
+          ))}
+        </ul>
       </div>
     </section>
   );

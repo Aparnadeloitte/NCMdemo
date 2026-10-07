@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { PortalHeader } from "@/components/layout/PortalHeader";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { LoadingState, PageLoader } from "@/components/ui/Feedback";
@@ -15,6 +15,32 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
+  const [overMap, setOverMap] = useState(false);
+
+  useEffect(() => {
+    const states = new Map<Element, boolean>();
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => states.set(entry.target, entry.isIntersecting));
+      setOverMap([...states.values()].some(Boolean));
+    }, { threshold: 0.2 });
+    const tracked = new Set<Element>();
+    function sync() {
+      document.querySelectorAll(".kdash-map, .map-panel").forEach((el) => {
+        if (!tracked.has(el)) {
+          tracked.add(el);
+          io.observe(el);
+        }
+      });
+    }
+    sync();
+    const mo = new MutationObserver(sync);
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      io.disconnect();
+      mo.disconnect();
+    };
+  }, []);
+
   if (!ready || !session) return <PageLoader label="Opening the portal…" />;
 
   function send(text: string) {
@@ -37,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="portal-main">{children}</main>
       </div>
       <button
-        className="chat-fab"
+        className={`chat-fab${overMap ? " chat-fab-dim" : ""}`}
         type="button"
         aria-label="Open chat"
         aria-expanded={chatOpen}
@@ -97,6 +123,9 @@ function ChatIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M4 5h16v11H8l-4 4V5Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <circle cx="9" cy="10.5" r="1.1" fill="currentColor" />
+      <circle cx="12" cy="10.5" r="1.1" fill="currentColor" />
+      <circle cx="15" cy="10.5" r="1.1" fill="currentColor" />
     </svg>
   );
 }

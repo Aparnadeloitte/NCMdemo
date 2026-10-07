@@ -28,7 +28,7 @@ export function KpiSiteMap({ pins, selectedId, onSelect }: { pins: KpiPin[]; sel
       if (cancelled || !host.current || mapRef.current) return;
       const map = L.map(host.current, { zoomControl: false, attributionControl: false, minZoom: 4, maxZoom: 12 }).setView([16.5, 78], 5);
       mapRef.current = map;
-      L.control.zoom({ position: "bottomright" }).addTo(map);
+      L.control.zoom({ position: "topright" }).addTo(map);
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18 }).addTo(map);
       layerRef.current = L.layerGroup().addTo(map);
       map.invalidateSize();

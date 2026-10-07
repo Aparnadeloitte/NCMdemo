@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/http/client";
 import { saveSession } from "@/lib/session";
-import { signInWithDigiLocker, signInWithIdentifier } from "@/services/auth.service";
+import { signInWithIdentifier } from "@/services/auth.service";
 
 function isValidIdentifier(value: string) {
   const trimmed = value.trim();
@@ -17,7 +17,7 @@ export function LoginScreen() {
   const router = useRouter();
   const [identifier, setIdentifier] = useState("");
   const [error, setError] = useState("");
-  const [pending, setPending] = useState<"continue" | "digilocker" | null>(null);
+  const [pending, setPending] = useState<"continue" | null>(null);
 
   async function onContinue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,24 +42,6 @@ export function LoginScreen() {
         caught instanceof ApiError
           ? caught.message
           : "Unable to continue right now. Please try again.",
-      );
-    } finally {
-      setPending(null);
-    }
-  }
-
-  async function onDigiLocker() {
-    setError("");
-    setPending("digilocker");
-    try {
-      const next = await signInWithDigiLocker();
-      saveSession(next);
-      router.push(next.nextStep === "dashboard" ? "/dashboard" : "/onboarding");
-    } catch (caught) {
-      setError(
-        caught instanceof ApiError
-          ? caught.message
-          : "DigiLocker sign-in is unavailable right now.",
       );
     } finally {
       setPending(null);
@@ -135,20 +117,6 @@ export function LoginScreen() {
               )}
             </button>
           </form>
-
-          <div className="divider">
-            <span>OR</span>
-          </div>
-
-          <button
-            className="btn-digi"
-            type="button"
-            onClick={onDigiLocker}
-            disabled={pending !== null}
-          >
-            <img src="/images/DigiLocker.svg" alt="" />
-            {pending === "digilocker" ? "Connecting…" : "Sign in with DigiLocker"}
-          </button>
 
           <div className="notice">
             <span className="notice-icon" aria-hidden="true">

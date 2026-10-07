@@ -88,7 +88,7 @@ export function CoastalMap({ stateName = "", query = "", project = undefined, co
         maxZoom: 12,
       }).setView([18.6, 80.2], 5);
       mapRef.current = map;
-      L.control.zoom({ position: "bottomright" }).addTo(map);
+      L.control.zoom({ position: "topright" }).addTo(map);
       L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         { maxZoom: 18 },
