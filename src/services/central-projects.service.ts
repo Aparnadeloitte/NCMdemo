@@ -116,7 +116,12 @@ export function listApprovedCentralProjects() {
 }
 
 export function assignmentsForUser(project: CentralProject, email: string) {
-  const agencyIds = new Set(agencyDirectory.filter((item) => item.portalUser.toLowerCase() === email.toLowerCase()).map((item) => item.id));
+  const normalized = email.trim().toLowerCase();
+  const agencyIds = new Set(agencyDirectory.filter((item) => {
+    const owner = item.portalUser.trim().toLowerCase();
+    if (owner) return owner === normalized;
+    return normalized === "agency@ncm.gov.in";
+  }).map((item) => item.id));
   return project.agencies.filter((item) => agencyIds.has(item.agencyId));
 }
 
