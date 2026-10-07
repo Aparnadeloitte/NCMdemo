@@ -140,7 +140,7 @@ export function ConfirmationStep() {
     try {
       await saveOnboardingStep({ confirmed: "yes" });
       const receipt = await submitOnboarding();
-      router.push(`/dashboard?welcome=${receipt.referenceId}`);
+      router.push(`/projects?welcome=${encodeURIComponent(receipt.referenceId)}`);
     } catch (caught) {
       setSubmitError(caught instanceof Error ? caught.message : "Unable to submit your access request.");
     } finally {
@@ -167,7 +167,7 @@ export function ConfirmationStep() {
           <div className="form-actions confirmation-actions">
             <button className="btn-ghost" type="button" onClick={() => router.push("/onboarding/organization")} disabled={submitting}>Back</button>
             <button className="btn-primary" type="button" onClick={completeOnboarding} disabled={submitting}>
-              {submitting ? "Completing…" : "Complete & Go to Dashboard"}
+              {submitting ? "Completing…" : "Complete & Go to Projects"}
               {submitting ? null : <ArrowRightIcon />}
             </button>
           </div>

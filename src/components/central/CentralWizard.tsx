@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CentralPreview } from "@/components/central/CentralPreview";
 import { PolygonSketch, square } from "@/components/central/PolygonSketch";
 import { EmptyState } from "@/components/ui/Feedback";
-import { agencyById, agencyDirectory, agenciesForActivity, blankActivity, blankAssignment, blankKpi, blankLocation, emptyCentralProject, financialYears, fundingSources, locationLabel, ncmComponents, standardKpis } from "@/data/central";
+import { agencyById, agencyDirectory, agenciesForActivity, blankActivity, blankAssignment, blankKpi, blankLocation, emptyCentralProject, financialYears, locationLabel, ncmComponents, standardKpis } from "@/data/central";
 import { districtCentroid, districtsByState, stateCentroids, states } from "@/data/options";
 import { getSession } from "@/lib/session";
 import { saveCentralDraft, submitCentralProject } from "@/services/central-projects.service";
@@ -283,7 +283,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
           <h2 style={{ marginTop: 18 }}>Funding details</h2>
           <div className="form-grid">
             <label className="field"><span>Total approved project cost</span><input value={draft.totalCost} placeholder="₹2.20 crore" onChange={(event) => patch({ totalCost: event.target.value })} /></label>
-            <label className="field"><span>Funding source</span><select value={draft.fundingSource} onChange={(event) => patch({ fundingSource: event.target.value })}>{fundingSources.map((item) => <option key={item}>{item}</option>)}</select></label>
+            <label className="field"><span>Funding source</span><input value={draft.fundingSource} placeholder="NCM 2.0 central share" onChange={(event) => patch({ fundingSource: event.target.value })} /></label>
             <label className="field"><span>Sanctioned amount</span><input value={draft.sanctioned} onChange={(event) => patch({ sanctioned: event.target.value })} /></label>
             <label className="field"><span>Financial year</span><select value={draft.financialYear} onChange={(event) => patch({ financialYear: event.target.value })}>{financialYears.map((item) => <option key={item}>{item}</option>)}</select></label>
             <label className="field span-2"><span>Fund allocation / release details</span><textarea rows={2} value={draft.releaseDetails} onChange={(event) => patch({ releaseDetails: event.target.value })} /></label>

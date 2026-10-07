@@ -36,7 +36,7 @@ export function LoginScreen() {
     try {
       const next = await signInWithIdentifier(identifier);
       saveSession(next);
-      router.push(next.nextStep === "dashboard" ? "/dashboard" : "/onboarding");
+      router.push(next.nextStep === "dashboard" ? "/projects" : "/onboarding");
     } catch (caught) {
       setError(
         caught instanceof ApiError

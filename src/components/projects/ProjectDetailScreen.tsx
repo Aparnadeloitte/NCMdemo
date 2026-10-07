@@ -30,7 +30,7 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
 
   return (
     <div className="page project-detail">
-      <Link className="back-link" href="/dashboard">Back to Dashboard</Link>
+      <Link className="back-link" href="/projects">Back to Projects</Link>
       <article className="detail-hero">
         <div className="detail-hero-lead">
           <img src="/images/activity-tree.jpg" alt="" />
@@ -40,7 +40,7 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
           </div>
           <StatusBadge status={project.status} />
         </div>
-        <Link className="btn-map" href="/dashboard#coastal-map">View On Map</Link>
+        <a className="btn-map" href="#project-map">View On Map</a>
       </article>
       <div className="detail-grid">
         <section className="panel">
@@ -59,7 +59,7 @@ export function ProjectDetailScreen({ projectId }: { projectId: string }) {
             <div><dt>End Date</dt><dd>{project.end}</dd></div>
           </dl>
         </section>
-        <section className="panel location-panel">
+        <section className="panel location-panel" id="project-map">
           <SiteMiniMap lat={project.latitude} lng={project.longitude} label={project.title} area={project.polygonArea} />
           <dl className="detail-meta">
             <div><dt>Longitude</dt><dd>{lng}</dd></div>
