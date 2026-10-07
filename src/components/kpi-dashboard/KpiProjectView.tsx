@@ -80,7 +80,8 @@ export function KpiProjectView({ projectId }: { projectId: string }) {
 }
 
 function Overview({ project }: { project: DashProject }) {
-  const used = Math.round((project.utilised / project.approvedCost) * 100);
+  const used = project.utilised === null ? null : Math.round((project.utilised / project.approvedCost) * 100);
+  const reportedKpis = project.kpis.filter((kpi) => kpi.reported !== false);
   return (
     <section className="panel">
       <header><h2>Overview</h2><p>Project details, funding, and status.</p></header>
@@ -88,9 +89,9 @@ function Overview({ project }: { project: DashProject }) {
         <div><dt>Component</dt><dd>{componentShort(project.component)}</dd></div>
         <div><dt>Status</dt><dd>{project.status}</dd></div>
         <div><dt>Approved cost</dt><dd>{formatCrore(project.approvedCost)}</dd></div>
-        <div><dt>Utilised</dt><dd>{formatCrore(project.utilised)} ({used}%)</dd></div>
+        <div><dt>Utilised</dt><dd>{project.utilised === null ? "Not reported" : `${formatCrore(project.utilised)} (${used}%)`}</dd></div>
         <div><dt>Locations</dt><dd>{project.locations.length}</dd></div>
-        <div><dt>KPI achievement</dt><dd>{averagePercent(project.kpis)}%</dd></div>
+        <div><dt>KPI achievement</dt><dd>{reportedKpis.length ? `${averagePercent(reportedKpis)}%` : "No reports"}</dd></div>
         <div><dt>Agencies</dt><dd>{project.agencies.join(", ")}</dd></div>
       </dl>
     </section>
@@ -106,12 +107,15 @@ function Locations({ project, selectedPin, onSelect }: { project: DashProject; s
       <div className="kdash-split">
         <KpiSiteMap pins={pins} selectedId={selectedPin} onSelect={onSelect} />
         <ul className="kdash-brief">
-          {project.locations.map((location) => (
+          {project.locations.map((location) => {
+            const rows = project.kpis.filter((kpi) => kpi.locationId === location.id && kpi.reported !== false);
+            return (
             <li key={location.id}>
               <button type="button" className="kdash-kpi" onClick={() => onSelect(location.id)}>{location.name}</button>
-              <span>{location.district}, {location.state} · {averagePercent(project.kpis.filter((kpi) => kpi.locationId === location.id))}%</span>
+              <span>{location.district}, {location.state} · {rows.length ? `${averagePercent(rows)}%` : "No reports"}</span>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </div>
     </section>
@@ -125,13 +129,14 @@ function Activities({ project }: { project: DashProject }) {
       <div className="kdash-bars">
         {project.activities.map((activity) => {
           const rows = project.kpis.filter((kpi) => kpi.activity === activity);
-          const value = averagePercent(rows);
-          const verified = rows.filter((kpi) => kpi.status === "Verified").length;
+          const reported = rows.filter((kpi) => kpi.reported !== false);
+          const value = averagePercent(reported);
+          const verified = reported.filter((kpi) => kpi.status === "Verified").length;
           return (
             <div key={activity} className="kdash-pair">
-              <span>{activity}<small className="cell-sub">{verified}/{rows.length} verified</small></span>
+              <span>{activity}<small className="cell-sub">{reported.length ? `${verified}/${reported.length} verified` : "No reports"}</small></span>
               <i><b className="achieved" style={{ width: `${Math.min(value, 100)}%` }} /></i>
-              <strong>{value}%</strong>
+              <strong>{reported.length ? `${value}%` : "—"}</strong>
             </div>
           );
         })}
@@ -177,8 +182,8 @@ function Kpis({ project, page, onPage, open, onOpen }: { project: DashProject; p
           { key: "location", header: "Location", render: (row) => locationById(project, row.locationId)?.name ?? "" },
           { key: "agency", header: "Agency", render: (row) => row.agency },
           { key: "target", header: "Target", render: (row) => formatMeasure(row.target, row.unit) },
-          { key: "achievement", header: "Achievement", render: (row) => formatMeasure(row.achievement, row.unit) },
-          { key: "progress", header: "% Progress", render: (row) => `${kpiPercent(row)}%` },
+          { key: "achievement", header: "Achievement", render: (row) => row.reported === false ? "Not reported" : formatMeasure(row.achievement, row.unit) },
+          { key: "progress", header: "% Progress", render: (row) => row.reported === false ? "—" : `${kpiPercent(row)}%` },
           { key: "status", header: "Verification", render: (row) => <span className={`kdash-pill ${row.status.toLowerCase()}`}>{row.status}</span> },
         ]}
       />

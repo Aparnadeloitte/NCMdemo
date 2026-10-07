@@ -4,6 +4,7 @@ import type { CentralProject, KpiReport, NcmProject } from "@/types/domain";
 
 const PROJECTS_KEY = "ncm.central.projects";
 const REPORTS_KEY = "ncm.central.reports";
+export const KPI_REPORTS_EVENT = "ncm-kpi-reports-changed";
 
 function readProjects(): CentralProject[] {
   if (typeof window === "undefined") return [];
@@ -35,6 +36,7 @@ function readReports(): KpiReport[] {
 
 function writeReports(items: KpiReport[]) {
   localStorage.setItem(REPORTS_KEY, JSON.stringify(items));
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(KPI_REPORTS_EVENT));
 }
 
 function nextId(items: CentralProject[]) {
@@ -169,6 +171,10 @@ export function reportsForProject(projectId: string) {
 
 export function listSubmittedKpiReports() {
   return readReports().filter((item) => item.status === "submitted").sort((a, b) => b.updated.localeCompare(a.updated));
+}
+
+export function listDashboardKpiReports() {
+  return readReports().filter((item) => item.status !== "draft");
 }
 
 export function upsertKpiReports(reports: KpiReport[], status: KpiReport["status"]) {

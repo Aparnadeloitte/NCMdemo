@@ -10,6 +10,9 @@ export type KpiPin = {
   lat: number;
   lng: number;
   color: string;
+  projectName?: string;
+  state?: string;
+  district?: string;
 };
 
 export function KpiSiteMap({ pins, selectedId, onSelect }: { pins: KpiPin[]; selectedId: string; onSelect: (id: string) => void }) {
@@ -53,13 +56,6 @@ export function KpiSiteMap({ pins, selectedId, onSelect }: { pins: KpiPin[]; sel
       layer.clearLayers();
       pins.forEach((pin) => {
         const selected = pin.id === selectedId;
-        const ring: [number, number][] = [
-          [pin.lat + 0.08, pin.lng - 0.08],
-          [pin.lat + 0.08, pin.lng + 0.08],
-          [pin.lat - 0.06, pin.lng + 0.05],
-          [pin.lat - 0.05, pin.lng - 0.09],
-        ];
-        L.polygon(ring, { color: pin.color, weight: selected ? 3 : 1.5, fillColor: pin.color, fillOpacity: selected ? 0.35 : 0.18 }).addTo(layer);
         const marker = L.circleMarker([pin.lat, pin.lng], {
           radius: selected ? 9 : 7,
           color: "#fff",
@@ -67,7 +63,8 @@ export function KpiSiteMap({ pins, selectedId, onSelect }: { pins: KpiPin[]; sel
           fillColor: pin.color,
           fillOpacity: 1,
         }).addTo(layer);
-        marker.bindTooltip(pin.name, { direction: "top" });
+        const details = [pin.projectName, pin.name, [pin.district, pin.state].filter(Boolean).join(", ")].filter(Boolean);
+        marker.bindTooltip(details.join(" · "), { direction: "top" });
         marker.on("click", () => onSelectRef.current(pin.id));
       });
       if (selectedId) {

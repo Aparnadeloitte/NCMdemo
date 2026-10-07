@@ -184,6 +184,10 @@ export function countApprovedStateProjects() {
   return readAll().filter((item) => item.status === "approved").length;
 }
 
+export function listApprovedStateProjects() {
+  return readAll().filter((item) => item.status === "approved");
+}
+
 export function listPendingStateApprovals(state: string) {
   return readAll()
     .filter((item) => item.status === "pending-approval" && item.state === state)

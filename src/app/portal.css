@@ -702,11 +702,17 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 .kdash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .kdash-split { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; margin-top: 14px; }
 .kdash-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin: 12px 0; }
+.kdash-global-filter { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; align-items: center; gap: 10px; margin: 16px 0; }
+.kdash-global-filter label { min-width: 0; }
 .kdash-filters select, .kdash-select select { width: 100%; height: 36px; min-width: 0; padding: 0 28px 0 10px; border: 1px solid #d7dee6; border-radius: 8px; background: #fff; color: #24384c; font-weight: 600; }
+.kdash-global-filter select { width: 100%; height: 40px; padding: 0 30px 0 12px; border: 1px solid #d7dee6; border-radius: 8px; background: #fff; color: #24384c; font-weight: 600; }
 .kdash-select { display: block; margin: 12px 0; }
 .kdash-bars { display: grid; gap: 10px; margin-top: 14px; }
 .kdash-pair { display: grid; grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) 48px; gap: 8px; align-items: center; font-size: 13px; color: #24384c; }
 .kdash-pair span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kdash-pair .cell-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kdash-finance .kdash-pair { grid-template-columns: minmax(120px, 1fr) minmax(30px, 2fr) minmax(96px, max-content); }
+.kdash-finance .kdash-pair strong { font-size: 12px; text-align: right; }
 .kdash-pair i, .kdash-pair > div { display: grid; gap: 4px; }
 .kdash-pair i, .kdash-pair b { display: block; height: 8px; border-radius: 999px; background: #e6edf5; }
 .kdash-pair b { background: #d0d5dd; }
@@ -749,7 +755,13 @@ dl.kdash-detail { margin: 0; }
 }
 @media (max-width: 860px) {
   .kdash-cards, .kdash-grid, .kdash-split, .kdash-detail dl, dl.kdash-detail { grid-template-columns: 1fr; }
+  .kdash-global-filter { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kdash-map { height: min(360px, 50vh); }
+}
+@media (max-width: 560px) {
+  .kdash-global-filter { grid-template-columns: 1fr; }
+  .kdash-finance .kdash-pair { grid-template-columns: minmax(100px, 1fr) minmax(24px, 1.2fr) minmax(80px, max-content); gap: 6px; }
+  .kdash-finance .kdash-pair strong { font-size: 11px; }
 }
 .sent-review { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(220px, .7fr); gap: 24px; align-items: center; padding: 28px; }
 .sent-ref { margin: 0 0 22px; color: #121212; font-size: 18px; font-weight: 800; }

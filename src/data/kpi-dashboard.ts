@@ -10,6 +10,7 @@ export type DashKpi = {
   target: number;
   achievement: number;
   status: KpiVerifyStatus;
+  reported?: boolean;
   activity: string;
   locationId: string;
   agency: string;
@@ -35,7 +36,7 @@ export type DashProject = {
   component: string;
   status: KpiProjectStatus;
   approvedCost: number;
-  utilised: number;
+  utilised: number | null;
   locations: DashLocation[];
   activities: string[];
   agencies: string[];
@@ -575,8 +576,9 @@ export function kpiPercent(kpi: DashKpi) {
 }
 
 export function averagePercent(kpis: DashKpi[]) {
-  if (!kpis.length) return 0;
-  return Math.round(kpis.reduce((sum, kpi) => sum + kpiPercent(kpi), 0) / kpis.length);
+  const reported = kpis.filter((kpi) => kpi.reported !== false);
+  if (!reported.length) return 0;
+  return Math.round(reported.reduce((sum, kpi) => sum + kpiPercent(kpi), 0) / reported.length);
 }
 
 export function formatCrore(value: number) {
