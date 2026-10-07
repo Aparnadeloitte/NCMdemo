@@ -154,12 +154,44 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
 
   if (!draft) return null;
   if (reference) {
+    const session = getSession();
+    const actor = session?.role || "Central user";
+    const when = new Date().toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+    const track = [
+      { label: "Draft", note: `Created by ${actor}, ${when}`, state: "done" },
+      { label: "Submitted", note: `By ${actor}, ${when}`, state: "done" },
+      { label: "Under Admin Review", note: "", state: "pending" },
+      { label: "Approved", note: "", state: "pending" },
+      { label: "Returned for Correction", note: "", state: "pending" },
+    ];
     return (
-      <div className="page campaign-page">
-        <section className="panel proposal-success">
-          <h1>Sent for review</h1>
-          <p>Reference <strong>{reference}</strong> is with the NCM admin. The workflow is Draft → Submitted → Admin Review → Approved or Returned for correction.</p>
-          <div className="form-actions"><Link className="btn-primary" href="/central-projects">View submissions</Link></div>
+      <div className="page">
+        <header className="page-head dash-head">
+          <h1>Sent For Review</h1>
+          <Link className="btn-primary" href="/central-projects">View Submission</Link>
+        </header>
+        <section className="panel sent-review">
+          <div>
+            <p className="sent-ref">Reference ID: {reference}</p>
+            <ol className="sent-track">
+              {track.map((item, index) => (
+                <li key={item.label} className={item.state}>
+                  <span className="sent-mark" aria-hidden="true">{item.state === "done" ? "✓" : ""}</span>
+                  {index < track.length - 1 ? <span className={`sent-line${track[index + 1].state === "done" ? " done" : ""}`} aria-hidden="true" /> : null}
+                  <div>
+                    <strong>{item.label}</strong>
+                    {item.state === "pending" ? <em>Pending</em> : null}
+                    {item.note ? <small>{item.note}</small> : null}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div className="sent-ready">
+            <img className="sent-doc" src="/images/sent-review.png" alt="" width={83} height={83} />
+            <strong>Sent for Review</strong>
+            <p>Your document is ready for review. Please review all pages carefully before submitting</p>
+          </div>
         </section>
       </div>
     );
@@ -457,7 +489,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                 )}
               </article>
           ))}
-          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ kpis: [...draft.kpis, blankKpi(draft.activities[0]?.id ?? "")] })}>+ Add KPI</button></div>
+          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ kpis: [...draft.kpis, blankKpi(draft.activities[0]?.id ?? "")] })}>+ Add More</button></div>
         </section>
       ) : null}
 
