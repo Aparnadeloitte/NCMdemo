@@ -16,6 +16,7 @@ export function ProjectsScreen() {
   const [rows, setRows] = useState<NcmProject[] | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
+  const [welcome, setWelcome] = useState<string | null>(null);
   const stored = useStoredProjects();
   const stats = useMemo(
     () => summarize(stored, { search: query.search, state: query.state }),
@@ -23,6 +24,7 @@ export function ProjectsScreen() {
   );
 
   const listedIds = stored.map((project) => project.id).join("|");
+  useEffect(() => { setWelcome(new URLSearchParams(window.location.search).get("welcome")); }, []);
   useEffect(() => {
     let active = true;
     setRows(null);
@@ -46,6 +48,7 @@ export function ProjectsScreen() {
         <h1>Projects</h1>
         <Link className="btn-primary" href="/projects/new">Create New Project</Link>
       </header>
+      {welcome ? <p className="welcome" role="status">Access request <strong>{welcome}</strong> has been submitted for review.</p> : null}
       <section className="kpi-grid dash-kpis" aria-label="Project summary">
         {projectKpis.map((kpi) => {
           const { totals, baseline } = stats;

@@ -1,5 +1,5 @@
-import { AppShell } from "@/components/layout/AppShell";
-import { DashboardScreen } from "@/components/dashboard/DashboardScreen";
+import { redirect } from "next/navigation";
+
 export default function Page() {
-  return <AppShell><DashboardScreen /></AppShell>;
+  redirect("/projects");
 }
