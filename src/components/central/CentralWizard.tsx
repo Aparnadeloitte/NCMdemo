@@ -5,8 +5,9 @@ import Link from "next/link";
 import { CentralPreview } from "@/components/central/CentralPreview";
 import { PolygonSketch, square } from "@/components/central/PolygonSketch";
 import { EmptyState } from "@/components/ui/Feedback";
+import { TrashIcon } from "@/components/ui/icons";
 import { agencyById, agencyDirectory, agenciesForActivity, blankActivity, blankAssignment, blankKpi, blankLocation, emptyCentralProject, financialYears, locationLabel, ncmComponents, standardKpis } from "@/data/central";
-import { districtCentroid, districtsByState, stateCentroids, states } from "@/data/options";
+import { districtCentroid, districtsByState, siteCentroid, sitesByDistrict, stateCentroids, states } from "@/data/options";
 import { getSession } from "@/lib/session";
 import { saveCentralDraft, submitCentralProject } from "@/services/central-projects.service";
 import type { CentralAgencyAssignment, CentralKpi, CentralLocation, CentralProject } from "@/types/domain";
@@ -29,8 +30,7 @@ function validate(draft: CentralProject, step: number) {
     if (!draft.locations.length) return "Add at least one location.";
     for (const location of draft.locations) {
       if (!location.state) return "Select a state or UT for every location.";
-      if (location.mode === "manual" && (!location.district || !location.site.trim())) return "Enter the district and site, or switch that location to a map boundary.";
-      if (location.mode === "map" && !location.polygon.some((ring) => ring.length >= 3)) return "Draw at least one closed shape (three or more points) for each mapped location.";
+      if (!location.district || !location.site.trim()) return "Enter the district and site for every location.";
     }
     if (!draft.totalCost.trim() || !draft.sanctioned.trim() || !draft.releaseDetails.trim()) return "Complete the funding details.";
   }
@@ -288,34 +288,22 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
             <label className="field"><span>Start date</span><input type="date" value={draft.start} onChange={(event) => patch({ start: event.target.value })} /></label>
             <label className="field"><span>End date</span><input type="date" value={draft.end} onChange={(event) => patch({ end: event.target.value })} /></label>
           </div>
-          <h2 style={{ marginTop: 18 }}>Project locations</h2>
-          <p className="field-hint">One project can run at several sites. Enter each site, or draw its boundary on the map.</p>
+          <h2 className="proposal-section-heading">Add Location</h2>
+          <p className="field-hint">One project can run at several sites. Pick each site, then draw its boundary on the map.</p>
           {draft.locations.map((location, index) => {
             const state = states.find((item) => item.label === location.state);
             const districts = state ? districtsByState[state.value] ?? [] : [];
             const district = districts.find((item) => item.label === location.district);
-            const mapCenter = state ? (district ? districtCentroid(state.value, district.value) : stateCentroids[state.value]) : undefined;
+            const sites = district ? sitesByDistrict[district.value] ?? [] : [];
+            const site = sites.find((item) => item.label === location.site);
+            const districtCenter = state ? (district ? districtCentroid(state.value, district.value) : stateCentroids[state.value]) : undefined;
+            const mapCenter = site ? siteCentroid(site.value) ?? districtCenter : districtCenter;
             return (
               <article key={location.id} className="location-card site-card">
-                <header className="proposal-actions"><strong>{index + 1}. Location</strong><button className="text-link" type="button" onClick={() => patch({ locations: draft.locations.filter((item) => item.id !== location.id) })}>Remove</button></header>
-                <div className="choice-row">
-                  <label><input type="radio" name={`mode-${location.id}`} checked={location.mode === "manual"} onChange={() => patchLocation(location.id, { mode: "manual" })} /> Enter location</label>
-                  <label>
-                    <input
-                      type="radio"
-                      name={`mode-${location.id}`}
-                      checked={location.mode === "map"}
-                      onChange={() => {
-                        const hasDrawing = location.polygon.some((ring) => ring.length > 0);
-                        if (!hasDrawing && mapCenter) patchLocation(location.id, { mode: "map", polygon: [square(mapCenter)] });
-                        else patchLocation(location.id, { mode: "map" });
-                      }}
-                    /> Draw polygon on map
-                  </label>
-                </div>
+                <header className="proposal-actions"><strong>{index + 1}. Location</strong><button className="remove-icon-btn" type="button" aria-label="Remove location" onClick={() => patch({ locations: draft.locations.filter((item) => item.id !== location.id) })}><TrashIcon /></button></header>
                 <div className="form-grid">
                   <label className="field"><span>State / UT</span>
-                    <select value={location.state} onChange={(event) => patchLocation(location.id, { state: event.target.value, district: "" })}>
+                    <select value={location.state} onChange={(event) => patchLocation(location.id, { state: event.target.value, district: "", site: "" })}>
                       <option value="">Select</option>
                       {states.map((item) => <option key={item.value}>{item.label}</option>)}
                     </select>
@@ -326,11 +314,12 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                       onChange={(event) => {
                         const districtLabel = event.target.value;
                         const nextDistrict = districts.find((item) => item.label === districtLabel);
-                        if (location.mode === "map" && state && nextDistrict) {
+                        const hasDrawing = location.polygon.some((ring) => ring.length > 0);
+                        if (!hasDrawing && state && nextDistrict) {
                           const center = districtCentroid(state.value, nextDistrict.value) ?? stateCentroids[state.value];
-                          patchLocation(location.id, { district: districtLabel, polygon: center ? [square(center)] : location.polygon });
+                          patchLocation(location.id, { district: districtLabel, site: "", polygon: center ? [square(center)] : location.polygon });
                         } else {
-                          patchLocation(location.id, { district: districtLabel });
+                          patchLocation(location.id, { district: districtLabel, site: "" });
                         }
                       }}
                     >
@@ -338,24 +327,38 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                       {districts.map((item) => <option key={item.value}>{item.label}</option>)}
                     </select>
                   </label>
-                  {location.mode === "manual" ? (
-                    <label className="field span-2"><span>Site / location</span><input value={location.site} onChange={(event) => patchLocation(location.id, { site: event.target.value })} /></label>
-                  ) : (
-                    <label className="field span-2"><span>Boundary label</span><input value={location.site} placeholder="Optional name for this polygon" onChange={(event) => patchLocation(location.id, { site: event.target.value })} /></label>
-                  )}
+                  <label className="field span-2"><span>Site / location</span>
+                    <select
+                      value={location.site}
+                      disabled={!district}
+                      onChange={(event) => {
+                        const siteLabel = event.target.value;
+                        const nextSite = sites.find((item) => item.label === siteLabel);
+                        const hasDrawing = location.polygon.some((ring) => ring.length > 0);
+                        const center = nextSite ? siteCentroid(nextSite.value) : undefined;
+                        if (!hasDrawing && center) {
+                          patchLocation(location.id, { site: siteLabel, polygon: [square(center)] });
+                        } else {
+                          patchLocation(location.id, { site: siteLabel });
+                        }
+                      }}
+                    >
+                      <option value="">{district ? "Select" : "Select a district first"}</option>
+                      {sites.map((item) => <option key={item.value}>{item.label}</option>)}
+                    </select>
+                  </label>
                 </div>
-                {location.mode === "map" ? (
-                  <PolygonSketch
-                    rings={location.polygon}
-                    onChange={(polygon) => patchLocation(location.id, { polygon })}
-                    center={mapCenter}
-                  />
-                ) : null}
+                <PolygonSketch
+                  rings={location.polygon}
+                  onChange={(polygon) => patchLocation(location.id, { polygon })}
+                  center={mapCenter}
+                  zoom={site ? 13 : district ? 11 : 8}
+                />
               </article>
             );
           })}
-          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ locations: [...draft.locations, blankLocation()] })}>+ Add More</button></div>
-          <h2 style={{ marginTop: 18 }}>Funding details</h2>
+          <div className="add-row locations-add-row"><button className="btn-ghost" type="button" onClick={() => patch({ locations: [...draft.locations, blankLocation()] })}>+ Add More</button></div>
+          <h2 className="proposal-section-heading">Funding details</h2>
           <div className="form-grid">
             <label className="field"><span>Total approved project cost</span><input value={draft.totalCost} placeholder="₹2.20 crore" onChange={(event) => patch({ totalCost: event.target.value })} /></label>
             <label className="field"><span>Funding source</span><input value={draft.fundingSource} placeholder="NCM 2.0 central share" onChange={(event) => patch({ fundingSource: event.target.value })} /></label>
@@ -371,7 +374,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
           <header><h2>Activities</h2><p>Add every activity under this project. The milestone or target is a free-text field.</p></header>
           {draft.activities.map((activity, index) => (
             <article key={activity.id} className="location-card">
-              <header className="proposal-actions"><strong>Activity {index + 1}</strong><button className="text-link" type="button" onClick={() => patch({ activities: draft.activities.filter((item) => item.id !== activity.id) })}>Remove</button></header>
+              <header className="proposal-actions"><strong>{index + 1}. Activity</strong><button className="remove-icon-btn" type="button" aria-label="Remove activity" onClick={() => patch({ activities: draft.activities.filter((item) => item.id !== activity.id) })}><TrashIcon /></button></header>
               <div className="form-grid">
                 <label className="field"><span>Activity name</span><input value={activity.name} onChange={(event) => patch({ activities: draft.activities.map((item) => item.id === activity.id ? { ...item, name: event.target.value } : item) })} /></label>
                 <label className="field"><span>Milestone / target</span><input value={activity.milestone} placeholder="100 ha planted" onChange={(event) => patch({ activities: draft.activities.map((item) => item.id === activity.id ? { ...item, milestone: event.target.value } : item) })} /></label>
@@ -381,7 +384,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
               </div>
             </article>
           ))}
-          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ activities: [...draft.activities, blankActivity()] })}>+ Add More</button></div>
+          <div className="add-row activities-add-row"><button className="btn-ghost" type="button" onClick={() => patch({ activities: [...draft.activities, blankActivity()] })}>+ Add More</button></div>
         </section>
       ) : null}
 
@@ -396,7 +399,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
             const type = agencyType[assignment.id] ?? agency?.type ?? "";
             return (
               <article key={assignment.id} className="agency-card">
-                <header className="proposal-actions"><strong>Agency</strong><button className="text-link" type="button" onClick={() => patch({ agencies: draft.agencies.filter((item) => item.id !== assignment.id) })}>Remove</button></header>
+                <header className="proposal-actions"><strong>Agency</strong><button className="remove-icon-btn" type="button" aria-label="Remove agency" onClick={() => patch({ agencies: draft.agencies.filter((item) => item.id !== assignment.id) })}><TrashIcon /></button></header>
                 <div className="form-grid">
                   <label className="field"><span>Agency type</span>
                     <select value={type} onChange={(event) => {
@@ -437,7 +440,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
               </article>
             );
           })}
-          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ agencies: [...draft.agencies, blankAssignment()] })}>+ Add More</button></div>
+          <div className="add-row agencies-add-row"><button className="btn-ghost" type="button" onClick={() => patch({ agencies: [...draft.agencies, blankAssignment()] })}>+ Add More</button></div>
         </section>
       ) : null}
 
@@ -454,7 +457,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                     <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "standard"} onChange={() => { const { evidence: _evidence, ...fields } = standardKpis[0]; patchKpi(kpi.id, { source: "standard", ...fields }); }} /> Standard KPI</label>
                     <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "custom"} onChange={() => patchKpi(kpi.id, { source: "custom" })} /> Custom KPI</label>
                   </div>
-                  <button className="text-link" type="button" onClick={() => patch({ kpis: draft.kpis.filter((item) => item.id !== kpi.id) })}>Remove</button>
+                  <button className="remove-icon-btn" type="button" aria-label="Remove KPI" onClick={() => patch({ kpis: draft.kpis.filter((item) => item.id !== kpi.id) })}><TrashIcon /></button>
                 </header>
                 {kpi.source === "standard" ? (
                   <>
@@ -476,20 +479,32 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                         </select>
                       </label>
                       <label className="field span-2"><span>Evidence</span>
-                        <input type="file" accept="image/*,.pdf" onChange={(event) => patchKpi(kpi.id, { evidence: event.target.files?.[0]?.name ?? "" })} />
-                        <small className="field-hint">{kpi.evidence || "Upload a location photo, geo map, or similar file."}</small>
+                        <div className="upload">
+                          <img src="/images/UploadSimple.svg" alt="" />
+                          <span>
+                            <strong>{kpi.evidence || "Upload file"}</strong>
+                            <small>{kpi.evidence ? "Click to replace the file" : "Click to choose a location photo, geo map, or similar file"}</small>
+                          </span>
+                          <input type="file" accept="image/*,.pdf" onChange={(event) => patchKpi(kpi.id, { evidence: event.target.files?.[0]?.name ?? "" })} />
+                        </div>
                       </label>
                     </div>
                   </>
                 ) : (
                   <label className="field"><span>Select template</span>
-                    <input type="file" onChange={(event) => patchKpi(kpi.id, { templateFile: event.target.files?.[0]?.name ?? "" })} />
-                    <small className="field-hint">{kpi.templateFile || "Choose a file."}</small>
+                    <div className="upload">
+                      <img src="/images/UploadSimple.svg" alt="" />
+                      <span>
+                        <strong>{kpi.templateFile || "Upload file"}</strong>
+                        <small>{kpi.templateFile ? "Click to replace the file" : "Click to choose a file"}</small>
+                      </span>
+                      <input type="file" onChange={(event) => patchKpi(kpi.id, { templateFile: event.target.files?.[0]?.name ?? "" })} />
+                    </div>
                   </label>
                 )}
               </article>
           ))}
-          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ kpis: [...draft.kpis, blankKpi(draft.activities[0]?.id ?? "")] })}>+ Add More</button></div>
+          <div className="add-row kpis-add-row"><button className="btn-ghost" type="button" onClick={() => patch({ kpis: [...draft.kpis, blankKpi(draft.activities[0]?.id ?? "")] })}>+ Add More</button></div>
         </section>
       ) : null}
 

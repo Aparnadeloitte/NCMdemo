@@ -265,7 +265,7 @@ function aiChecks(report: KpiReport, project: CentralProject) {
     { label: "Deviations against target", detail: Number.isFinite(achievement) && Number.isFinite(target) ? `Reported ${achievement} against target ${target}.` : "Target comparison needs numeric values.", warn: false },
     { label: "Anomalous values", detail: Number.isFinite(achievement) && Number.isFinite(target) && target > 0 && achievement > target * 1.5 ? "Reported value is far above the approved target." : "No anomalous spike detected.", warn: Number.isFinite(achievement) && Number.isFinite(target) && target > 0 && achievement > target * 1.5 },
     { label: "Evidence / data correlation", detail: agenciesForActivity(project, kpi?.activityId ?? "").length ? "KPI, activity and agency are linked." : "The KPI is not linked to an agency.", warn: !agenciesForActivity(project, kpi?.activityId ?? "").length },
-    { label: "GIS / location consistency", detail: location?.mode === "map" && !location.polygon.some((ring) => ring.length >= 3) ? "The mapped location does not have a closed boundary." : "Location link is present.", warn: location?.mode === "map" && !location.polygon.some((ring) => ring.length >= 3) },
+    { label: "GIS / location consistency", detail: location?.polygon.some((ring) => ring.length > 0) && !location.polygon.some((ring) => ring.length >= 3) ? "The drawn boundary is not closed." : "Location link is present.", warn: Boolean(location?.polygon.some((ring) => ring.length > 0) && !location.polygon.some((ring) => ring.length >= 3)) },
   ];
 }
 

@@ -20,10 +20,12 @@ export function PolygonSketch({
   rings,
   onChange,
   center,
+  zoom = 10,
 }: {
   rings: [number, number][][];
   onChange: (next: [number, number][][]) => void;
   center?: [number, number];
+  zoom?: number;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -35,6 +37,7 @@ export function PolygonSketch({
 
   useEffect(() => {
     let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
     void import("leaflet").then((L) => {
       if (cancelled || !host.current || mapRef.current) return;
       const map = L.map(host.current, { attributionControl: false }).setView(center ?? DEFAULT_CENTER, 7);
@@ -48,9 +51,16 @@ export function PolygonSketch({
         const next = current.length ? current.slice(0, -1) : [];
         onChangeRef.current([...next, [...active, [latlng.lat, latlng.lng]]]);
       });
+      // Leaflet sizes itself off the container at init time; re-measure once the
+      // layout settles and whenever the card resizes, otherwise tiles can render
+      // at a stale, oversized scale that spills outside the card.
+      requestAnimationFrame(() => map.invalidateSize());
+      resizeObserver = new ResizeObserver(() => map.invalidateSize());
+      resizeObserver.observe(host.current);
     });
     return () => {
       cancelled = true;
+      resizeObserver?.disconnect();
       mapRef.current?.remove();
       mapRef.current = null;
     };
@@ -59,8 +69,8 @@ export function PolygonSketch({
 
   useEffect(() => {
     if (!center) return;
-    mapRef.current?.setView(center, 10);
-  }, [center]);
+    mapRef.current?.setView(center, zoom);
+  }, [center, zoom]);
 
   useEffect(() => {
     const map = mapRef.current;

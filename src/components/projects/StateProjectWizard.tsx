@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { districtsByState, states } from "@/data/options";
+import { TrashIcon } from "@/components/ui/icons";
 import { getSession } from "@/lib/session";
 import { createEmptyProposal, readStateDraft, saveStateDraft, submitStateProposal } from "@/services/state-projects.service";
 import type { StateProjectActivity, StateProjectKpi, StateProjectProposal } from "@/types/domain";
@@ -324,7 +325,7 @@ export function StateProjectWizard() {
                     <td><input aria-label="End" type="date" value={row.end} onChange={(event) => patchActivity(row.id, { end: event.target.value })} /></td>
                     <td><input aria-label="Target" value={row.target} onChange={(event) => patchActivity(row.id, { target: event.target.value })} /></td>
                     <td><input aria-label="Budget" value={row.budget} onChange={(event) => patchActivity(row.id, { budget: event.target.value })} /></td>
-                    <td><button className="text-link" type="button" onClick={() => patch({ activities: draft.activities.filter((item) => item.id !== row.id) })}>Remove</button></td>
+                    <td><button className="remove-icon-btn" type="button" aria-label="Remove activity" onClick={() => patch({ activities: draft.activities.filter((item) => item.id !== row.id) })}><TrashIcon /></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -385,7 +386,7 @@ export function StateProjectWizard() {
                         {evidenceTypes.map((item) => <option key={item}>{item}</option>)}
                       </select>
                     </td>
-                    <td><button className="text-link" type="button" onClick={() => patch({ kpis: draft.kpis.filter((item) => item.id !== row.id) })}>Remove</button></td>
+                    <td><button className="remove-icon-btn" type="button" aria-label="Remove KPI" onClick={() => patch({ kpis: draft.kpis.filter((item) => item.id !== row.id) })}><TrashIcon /></button></td>
                   </tr>
                 ))}
               </tbody>
