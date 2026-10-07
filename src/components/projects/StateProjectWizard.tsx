@@ -337,7 +337,7 @@ export function StateProjectWizard() {
               type="button"
               onClick={() => patch({ activities: [...draft.activities, { id: rowId("act"), name: "", start: "", end: "", target: "", budget: "" }] })}
             >
-              + Add Activity
+              + Add More
             </button>
           </div>
           <p className="proposal-note">This directly supports milestone and target monitoring required by the MIS.</p>

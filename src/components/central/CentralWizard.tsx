@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CentralPreview } from "@/components/central/CentralPreview";
 import { PolygonSketch, square } from "@/components/central/PolygonSketch";
@@ -59,6 +59,49 @@ function validate(draft: CentralProject, step: number) {
     }
   }
   return "";
+}
+
+function ChipMultiSelect({ label, placeholder, emptyText, options, selectedIds, onChange }: { label: string; placeholder: string; emptyText: string; options: { id: string; name: string }[]; selectedIds: string[]; onChange: (ids: string[]) => void }) {
+  const root = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const chosen = options.filter((option) => selectedIds.includes(option.id));
+
+  useEffect(() => {
+    if (!open) return;
+    function close(event: MouseEvent) {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  return (
+    <div className="field combo" ref={root}>
+      <span>{label}</span>
+      <div className={`multi-select${chosen.length ? "" : " is-empty"}`} role="button" tabIndex={0} aria-expanded={open} aria-haspopup="listbox" onClick={() => setOpen((current) => !current)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setOpen((current) => !current); } }}>
+        {chosen.length ? chosen.map((option) => (
+          <span key={option.id} className="multi-chip">
+            {option.name}
+            <button type="button" aria-label={`Remove ${option.name}`} onClick={(event) => { event.stopPropagation(); onChange(selectedIds.filter((id) => id !== option.id)); }}>×</button>
+          </span>
+        )) : placeholder}
+      </div>
+      {open ? (
+        <ul className="combo-list multi-list" role="listbox" aria-multiselectable="true">
+          {options.length ? options.map((option) => {
+            const picked = selectedIds.includes(option.id);
+            return (
+              <li key={option.id}>
+                <button type="button" role="option" aria-selected={picked} onMouseDown={(event) => event.preventDefault()} onClick={() => onChange(picked ? selectedIds.filter((id) => id !== option.id) : [...selectedIds, option.id])}>
+                  {option.name}
+                </button>
+              </li>
+            );
+          }) : <li className="combo-empty">{emptyText}</li>}
+        </ul>
+      ) : null}
+    </div>
+  );
 }
 
 function AgencyNameField({ type, agencyId, onSelect }: { type: string; agencyId: string; onSelect: (agencyId: string) => void }) {
@@ -221,8 +264,8 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
             const district = districts.find((item) => item.label === location.district);
             const mapCenter = state ? (district ? districtCentroid(state.value, district.value) : stateCentroids[state.value]) : undefined;
             return (
-              <article key={location.id} className="location-card">
-                <header className="proposal-actions"><strong>Location {index + 1}</strong><button className="text-link" type="button" onClick={() => patch({ locations: draft.locations.filter((item) => item.id !== location.id) })}>Remove</button></header>
+              <article key={location.id} className="location-card site-card">
+                <header className="proposal-actions"><strong>{index + 1}. Location</strong><button className="text-link" type="button" onClick={() => patch({ locations: draft.locations.filter((item) => item.id !== location.id) })}>Remove</button></header>
                 <div className="choice-row">
                   <label><input type="radio" name={`mode-${location.id}`} checked={location.mode === "manual"} onChange={() => patchLocation(location.id, { mode: "manual" })} /> Enter location</label>
                   <label>
@@ -279,7 +322,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
               </article>
             );
           })}
-          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ locations: [...draft.locations, blankLocation()] })}>+ Add location</button></div>
+          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ locations: [...draft.locations, blankLocation()] })}>+ Add More</button></div>
           <h2 style={{ marginTop: 18 }}>Funding details</h2>
           <div className="form-grid">
             <label className="field"><span>Total approved project cost</span><input value={draft.totalCost} placeholder="₹2.20 crore" onChange={(event) => patch({ totalCost: event.target.value })} /></label>
@@ -306,7 +349,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
               </div>
             </article>
           ))}
-          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ activities: [...draft.activities, blankActivity()] })}>+ Add Activity</button></div>
+          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ activities: [...draft.activities, blankActivity()] })}>+ Add More</button></div>
         </section>
       ) : null}
 
@@ -343,22 +386,26 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                     <div><dt>Mobile</dt><dd>{agency.mobile}</dd></div>
                   </dl>
                 ) : null}
-                <p>Tagged locations</p>
-                <div className="check-grid">
-                  {draft.locations.map((location) => (
-                    <label key={location.id}><input type="checkbox" checked={assignment.locationIds.includes(location.id)} onChange={(event) => patchAgency(assignment.id, { locationIds: event.target.checked ? [...assignment.locationIds, location.id] : assignment.locationIds.filter((item) => item !== location.id) })} />{locationLabel(location)}</label>
-                  ))}
-                </div>
-                <p>Tagged activities</p>
-                <div className="check-grid">
-                  {draft.activities.map((activity) => (
-                    <label key={activity.id}><input type="checkbox" checked={assignment.activityIds.includes(activity.id)} onChange={(event) => patchAgency(assignment.id, { activityIds: event.target.checked ? [...assignment.activityIds, activity.id] : assignment.activityIds.filter((item) => item !== activity.id) })} />{activity.name || "Untitled activity"}</label>
-                  ))}
-                </div>
+                <ChipMultiSelect
+                  label="Tagged locations"
+                  placeholder="Select locations"
+                  emptyText="No locations added"
+                  options={draft.locations.map((location) => ({ id: location.id, name: locationLabel(location) }))}
+                  selectedIds={assignment.locationIds}
+                  onChange={(locationIds) => patchAgency(assignment.id, { locationIds })}
+                />
+                <ChipMultiSelect
+                  label="Tagged activities"
+                  placeholder="Select activities"
+                  emptyText="No activities added"
+                  options={draft.activities.map((activity) => ({ id: activity.id, name: activity.name || "Untitled activity" }))}
+                  selectedIds={assignment.activityIds}
+                  onChange={(activityIds) => patchAgency(assignment.id, { activityIds })}
+                />
               </article>
             );
           })}
-          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ agencies: [...draft.agencies, blankAssignment()] })}>+ Add agency</button></div>
+          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ agencies: [...draft.agencies, blankAssignment()] })}>+ Add More</button></div>
         </section>
       ) : null}
 
