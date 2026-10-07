@@ -610,6 +610,10 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 .workflow-dot { width: 14px; height: 14px; margin-top: 3px; border: 2px solid #d0d5dd; border-radius: 50%; flex: none; }
 .workflow-step.done .workflow-dot { background: #1f9d62; border-color: #1f9d62; }
 .workflow-step.rejected .workflow-dot { background: #b42318; border-color: #b42318; }
+.review-progress { margin: 0; padding: 16px 20px; border: 1px solid #e6edf5; border-radius: 8px; background: #fff; }
+.review-progress .workflow-step.current .workflow-dot { border-color: #235b93; background: #dcebf7; }
+.review-progress .workflow-step.current strong { color: #174b78; }
+.review-progress .workflow-step.rejected strong { color: #b42318; }
 .cell-sub { display: block; color: #66788a; font-size: 12px; font-weight: 500; }
 .crumb { margin: 0 0 4px; font-size: 13px; }
 .crumb a { color: #00389a; font-weight: 700; text-decoration: none; }
@@ -619,6 +623,12 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 .review-facts dt { color: #66788a; font-size: 13px; }
 .review-facts dd { margin: 0; font-size: 13px; font-weight: 700; text-align: right; }
 .doc-summary { margin: 8px 0 16px; padding-left: 18px; color: #24384c; font-size: 14px; }
+.central-review-detail { color: var(--ink); font-family: var(--font-inter), sans-serif; }
+.central-review-detail :is(h1, h2, h3) { color: var(--title); font-family: inherit; letter-spacing: 0; }
+.central-review-detail .review-facts div { display: grid; grid-template-columns: minmax(120px, 170px) minmax(0, 1fr); align-items: start; }
+.central-review-detail .review-facts dt, .central-review-detail .field-hint, .central-review-detail .page-head p { color: var(--muted); }
+.central-review-detail .review-facts dd { color: var(--ink); text-align: left; overflow-wrap: anywhere; }
+.central-review-detail .doc-summary, .central-review-detail .proposal-card > p { color: var(--ink); }
 .modal h3 { margin: 8px 0; font-size: 15px; }
 .campaign-steps.steps-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .sketch-map { height: 600px; margin-top: 8px; border-radius: 10px; overflow: hidden; }
