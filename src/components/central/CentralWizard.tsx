@@ -288,7 +288,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
             <label className="field"><span>Start date</span><input type="date" value={draft.start} onChange={(event) => patch({ start: event.target.value })} /></label>
             <label className="field"><span>End date</span><input type="date" value={draft.end} onChange={(event) => patch({ end: event.target.value })} /></label>
           </div>
-          <h2 style={{ marginTop: 18 }}>Project locations</h2>
+          <h2 className="proposal-section-heading">Add Location</h2>
           <p className="field-hint">One project can run at several sites. Pick each site, then draw its boundary on the map.</p>
           {draft.locations.map((location, index) => {
             const state = states.find((item) => item.label === location.state);
@@ -357,8 +357,8 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
               </article>
             );
           })}
-          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ locations: [...draft.locations, blankLocation()] })}>+ Add More</button></div>
-          <h2 style={{ marginTop: 18 }}>Funding details</h2>
+          <div className="add-row locations-add-row"><button className="btn-ghost" type="button" onClick={() => patch({ locations: [...draft.locations, blankLocation()] })}>+ Add More</button></div>
+          <h2 className="proposal-section-heading">Funding details</h2>
           <div className="form-grid">
             <label className="field"><span>Total approved project cost</span><input value={draft.totalCost} placeholder="₹2.20 crore" onChange={(event) => patch({ totalCost: event.target.value })} /></label>
             <label className="field"><span>Funding source</span><input value={draft.fundingSource} placeholder="NCM 2.0 central share" onChange={(event) => patch({ fundingSource: event.target.value })} /></label>
@@ -384,7 +384,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
               </div>
             </article>
           ))}
-          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ activities: [...draft.activities, blankActivity()] })}>+ Add More</button></div>
+          <div className="add-row activities-add-row"><button className="btn-ghost" type="button" onClick={() => patch({ activities: [...draft.activities, blankActivity()] })}>+ Add More</button></div>
         </section>
       ) : null}
 
@@ -440,7 +440,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
               </article>
             );
           })}
-          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ agencies: [...draft.agencies, blankAssignment()] })}>+ Add More</button></div>
+          <div className="add-row agencies-add-row"><button className="btn-ghost" type="button" onClick={() => patch({ agencies: [...draft.agencies, blankAssignment()] })}>+ Add More</button></div>
         </section>
       ) : null}
 
@@ -504,7 +504,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                 )}
               </article>
           ))}
-          <div className="add-row"><button className="btn-ghost" type="button" onClick={() => patch({ kpis: [...draft.kpis, blankKpi(draft.activities[0]?.id ?? "")] })}>+ Add More</button></div>
+          <div className="add-row kpis-add-row"><button className="btn-ghost" type="button" onClick={() => patch({ kpis: [...draft.kpis, blankKpi(draft.activities[0]?.id ?? "")] })}>+ Add More</button></div>
         </section>
       ) : null}
 
