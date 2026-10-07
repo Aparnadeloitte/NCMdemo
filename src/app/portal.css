@@ -215,6 +215,15 @@ th { color: #66788a; font-size: 12px; font-weight: 800; }
 .ai-check-warn strong { color: #9a6700; }
 .ai-check-fail strong { color: #b42318; }
 .ai-review-flags { margin: 0; padding-left: 16px; color: #66788a; font-size: 12px; line-height: 1.5; }
+.ai-checklist { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ai-checklist li { display: grid; grid-template-columns: 118px minmax(0, 1fr); column-gap: 12px; align-items: start; padding: 10px 12px; border-radius: 8px; background: #fff; }
+.ai-checklist li strong { grid-row: 1 / span 2; align-self: center; font-size: 11px; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; }
+.ai-checklist li span { color: #121212; font-size: 13px; font-weight: 700; }
+.ai-checklist li p { margin: 2px 0 0; color: #526070; font-size: 12.5px; line-height: 1.45; }
+@media (max-width: 640px) {
+  .ai-checklist li { grid-template-columns: 1fr; }
+  .ai-checklist li strong { grid-row: auto; }
+}
 .chat-fab { position: fixed; right: 24px; bottom: 24px; z-index: 30; width: 52px; height: 52px; display: grid; place-items: center; border: 3px solid #fff; border-radius: 50%; background: var(--btn); color: #fff; box-shadow: 0 10px 26px rgba(12,35,64,.35); cursor: pointer; transition: width .2s ease, height .2s ease, opacity .2s ease; }
 .chat-fab:hover { background: var(--btn-hover); }
 .chat-fab-dim { width: 38px; height: 38px; opacity: .55; }

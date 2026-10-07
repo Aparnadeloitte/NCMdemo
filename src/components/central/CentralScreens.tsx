@@ -304,14 +304,21 @@ function aiChecks(report: KpiReport, project: CentralProject) {
   const achievement = Number(report.achievement.match(/[\d.]+/)?.[0] ?? "");
   const target = Number(kpi?.target.match(/[\d.]+/)?.[0] ?? "");
   const prior = report.history.slice(0, -1);
+  const hasEvidence = report.documents.length > 0 || report.photos.length > 0;
+  const hasAchievement = report.achievement.trim().length > 0;
+  const duplicate = prior.some((item) => item.achievement === report.achievement);
+  const comparable = Number.isFinite(achievement) && Number.isFinite(target);
+  const anomalous = comparable && target > 0 && achievement > target * 1.5;
+  const linked = agenciesForActivity(project, kpi?.activityId ?? "").length > 0;
+  const openBoundary = Boolean(location?.polygon.some((ring) => ring.length > 0) && !location.polygon.some((ring) => ring.length >= 3));
   return [
-    { label: "Missing evidence", detail: report.documents.length || report.photos.length ? "Evidence is attached." : "No document or geo-tagged photo was uploaded.", warn: !report.documents.length && !report.photos.length },
-    { label: "Data inconsistencies", detail: report.achievement.trim() ? "An achievement value is present." : "Achievement is blank.", warn: !report.achievement.trim() },
-    { label: "Duplicate submissions", detail: prior.some((item) => item.achievement === report.achievement) ? "This achievement matches an earlier submission." : "No duplicate value found.", warn: prior.some((item) => item.achievement === report.achievement) },
-    { label: "Deviations against target", detail: Number.isFinite(achievement) && Number.isFinite(target) ? `Reported ${achievement} against target ${target}.` : "Target comparison needs numeric values.", warn: false },
-    { label: "Anomalous values", detail: Number.isFinite(achievement) && Number.isFinite(target) && target > 0 && achievement > target * 1.5 ? "Reported value is far above the approved target." : "No anomalous spike detected.", warn: Number.isFinite(achievement) && Number.isFinite(target) && target > 0 && achievement > target * 1.5 },
-    { label: "Evidence / data correlation", detail: agenciesForActivity(project, kpi?.activityId ?? "").length ? "KPI, activity and agency are linked." : "The KPI is not linked to an agency.", warn: !agenciesForActivity(project, kpi?.activityId ?? "").length },
-    { label: "GIS / location consistency", detail: location?.polygon.some((ring) => ring.length > 0) && !location.polygon.some((ring) => ring.length >= 3) ? "The drawn boundary is not closed." : "Location link is present.", warn: Boolean(location?.polygon.some((ring) => ring.length > 0) && !location.polygon.some((ring) => ring.length >= 3)) },
+    { label: "Evidence attached", detail: hasEvidence ? "A document or geo-tagged photo is attached to this submission." : "No document or geo-tagged photo is attached.", warn: !hasEvidence },
+    { label: "Achievement reported", detail: hasAchievement ? "An achievement value is present for this KPI." : "The achievement field is blank.", warn: !hasAchievement },
+    { label: "Duplicate check", detail: duplicate ? "This achievement matches an earlier submission for the same KPI." : "This achievement does not match an earlier submission.", warn: duplicate },
+    { label: "Target comparison", detail: comparable ? `Reported ${achievement} against the approved target of ${target}.` : "The achievement or target is not a number, so the variance cannot be calculated.", warn: false },
+    { label: "Value range", detail: anomalous ? "The reported value is more than 50% above the approved target." : "No unusual spike against the approved target.", warn: anomalous },
+    { label: "Activity and agency link", detail: linked ? "This KPI is linked to an activity and an implementing agency." : "This KPI is not linked to an implementing agency.", warn: !linked },
+    { label: "Location consistency", detail: openBoundary ? "A location boundary is drawn, but it is not closed." : "The reported location is linked to this KPI.", warn: openBoundary },
   ];
 }
 
@@ -389,12 +396,24 @@ export function KpiReviewDetail({ reportId: id }: { reportId: string }) {
         {report.history.length === 0 ? <p className="field-hint">This is the first submission.</p> : <ul className="doc-summary">{report.history.map((item) => <li key={item.at}>{item.status}: {item.achievement} · {item.at.slice(0, 10)}</li>)}</ul>}
         {report.status === "submitted" ? (
           <>
-            <button className="btn-ghost" type="button" onClick={() => setShowAi(true)}>Run AI-assisted checks</button>
+            <button className="btn-ghost" type="button" aria-expanded={showAi} onClick={() => setShowAi((open) => !open)}>{showAi ? "Hide AI-assisted checks" : "Run AI-assisted checks"}</button>
             {showAi ? (
-              <ul className="doc-summary">
-                {checks.map((check) => <li key={check.label}><strong>{check.label}:</strong> {check.detail} {check.warn ? "(flag)" : ""}</li>)}
-                <li>Recommendation: review manually. These checks do not approve the submission.</li>
-              </ul>
+              <div className="ai-review-result">
+                <div className="ai-review-head">
+                  <strong>AI review checklist</strong>
+                  <span className={checks.some((check) => check.warn) ? "ai-risk ai-risk-medium" : "ai-review-score"}>{checks.filter((check) => check.warn).length ? `${checks.filter((check) => check.warn).length} to review` : "All clear"}</span>
+                </div>
+                <p>{checks.some((check) => check.warn) ? "Items marked Needs attention are for your review. These checks do not approve or return the submission." : "Nothing in this checklist is flagged. The approve or return decision is still yours."}</p>
+                <ul className="ai-checklist">
+                  {checks.map((check) => (
+                    <li key={check.label} className={check.warn ? "ai-check-warn" : "ai-check-pass"}>
+                      <strong>{check.warn ? "Needs attention" : "Clear"}</strong>
+                      <span>{check.label}</span>
+                      <p>{check.detail}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : null}
             <label className="field"><span>Reviewer remarks</span><textarea rows={3} value={note} onChange={(event) => setNote(event.target.value)} /></label>
             {error ? <p className="form-error" role="alert">{error}</p> : null}
