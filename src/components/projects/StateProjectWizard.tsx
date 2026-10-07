@@ -398,7 +398,7 @@ export function StateProjectWizard() {
               type="button"
               onClick={() => patch({ kpis: [...draft.kpis, { id: rowId("kpi"), name: "", target: "", unit: "Hectares", frequency: "Quarterly", evidence: "Geo-photo" }] })}
             >
-              + Add KPI
+              + Add More
             </button>
           </div>
           <p className="proposal-note">The proposal explicitly envisages ecological, financial, infrastructure and climate-resilience KPIs, including mangrove/coral restoration, survival/health rates, fund utilisation and vulnerability-related indicators.</p>

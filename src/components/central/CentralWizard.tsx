@@ -416,12 +416,14 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
             <EmptyState title="No KPIs added yet" message="Add standard or custom indicators to track this project's progress." />
           ) : null}
           {draft.kpis.map((kpi) => (
-              <article key={kpi.id} className="location-card">
-                <header className="proposal-actions"><strong>{kpi.source === "custom" ? "Custom KPI" : "Standard KPI"}</strong><button className="text-link" type="button" onClick={() => patch({ kpis: draft.kpis.filter((item) => item.id !== kpi.id) })}>Remove</button></header>
-                <div className="choice-row">
-                  <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "standard"} onChange={() => { const { evidence: _evidence, ...fields } = standardKpis[0]; patchKpi(kpi.id, { source: "standard", ...fields }); }} /> Standard KPI</label>
-                  <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "custom"} onChange={() => patchKpi(kpi.id, { source: "custom" })} /> Custom KPI</label>
-                </div>
+              <article key={kpi.id} className="location-card kpi-card">
+                <header className="proposal-actions">
+                  <div className="choice-row">
+                    <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "standard"} onChange={() => { const { evidence: _evidence, ...fields } = standardKpis[0]; patchKpi(kpi.id, { source: "standard", ...fields }); }} /> Standard KPI</label>
+                    <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "custom"} onChange={() => patchKpi(kpi.id, { source: "custom" })} /> Custom KPI</label>
+                  </div>
+                  <button className="text-link" type="button" onClick={() => patch({ kpis: draft.kpis.filter((item) => item.id !== kpi.id) })}>Remove</button>
+                </header>
                 {kpi.source === "standard" ? (
                   <>
                     <label className="field"><span>KPI master</span>
