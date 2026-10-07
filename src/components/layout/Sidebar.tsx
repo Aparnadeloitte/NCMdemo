@@ -28,7 +28,7 @@ const roleItem: Record<string, { href: string; label: string; icon: string }[]> 
 export function Sidebar({ open, onClose, role }: { open: boolean; onClose: () => void; role?: string }) {
   const pathname = usePathname();
   const extra = role ? roleItem[role] ?? [] : [];
-  const kpiItem = { href: "/kpi-dashboard", label: "KPI Dashboard", icon: "/images/Grid_dashboard.svg" };
+  const kpiItem = { href: "/kpi-dashboard", label: "Dashboard", icon: "/images/Grid_dashboard.svg" };
   const showKpi = role === "State user" || role === "Central user";
   const primary = showKpi ? [kpiItem, ...items.slice(0, 3)] : items.slice(0, 3);
   const nav = [...primary.filter((item) => role !== "State user" || item.href !== "/projects"), ...extra, ...items.slice(3)];
