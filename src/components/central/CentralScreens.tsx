@@ -424,8 +424,8 @@ export function KpiReviewDetail({ reportId: id }: { reportId: string }) {
           </>
         ) : report.status === "approved" ? (
           project.published
-            ? <p className="proposal-note">Approved. This was the last KPI review, so the project is now listed in <Link href="/projects">Projects</Link>.</p>
-            : <p className="proposal-note">Approved. The project is added to Projects when the last KPI review for this project is approved.</p>
+            ? <p className="proposal-note">Approved. This was the last KPI review, so the project and its KPI results are now on the <Link href="/kpi-dashboard">KPI Dashboard</Link>.</p>
+            : <p className="proposal-note">Approved. The project is added to the KPI Dashboard when every waiting KPI review for this project is decided.</p>
         ) : <p className="proposal-note">Returned: {report.reviewNote}</p>}
       </section>
     </div>

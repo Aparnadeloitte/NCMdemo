@@ -600,7 +600,8 @@ export function componentShort(component: string) {
   if (component.includes("Beach")) return "Blue Flag / BEAMS";
   if (component.includes("Mangrove")) return "Mangrove";
   if (component.includes("Coral")) return "Coral Reef";
-  return "Coastal Wetland";
+  if (component.includes("Wetland") || component.includes("Lagoon")) return "Coastal Wetland";
+  return component;
 }
 
 export function blueFlagCounts(projects: DashProject[]) {

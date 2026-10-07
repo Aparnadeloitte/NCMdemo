@@ -10,13 +10,15 @@ import {
   componentShort,
   formatCrore,
   formatMeasure,
-  getKpiProject,
   kpiPercent,
   locationById,
   type DashKpi,
   type DashProject,
 } from "@/data/kpi-dashboard";
 import { getSession } from "@/lib/session";
+import { KPI_REPORTS_EVENT } from "@/services/central-projects.service";
+import { listKpiDashboardProjects } from "@/services/kpi-dashboard.service";
+import { PROJECTS_EVENT } from "@/services/projects.service";
 
 const pinColors: Record<string, string> = {
   "Blue Flag / BEAMS": "#2f6fed",
@@ -53,7 +55,7 @@ export function ProjectView({ project }: { project: DashProject }) {
 }
 
 export function KpiProjectView({ projectId }: { projectId: string }) {
-  const project = getKpiProject(projectId);
+  const [project, setProject] = useState<DashProject | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [stateName, setStateName] = useState("");
 
@@ -61,11 +63,19 @@ export function KpiProjectView({ projectId }: { projectId: string }) {
     const session = getSession();
     setRole(session?.role ?? "");
     setStateName(session?.state ?? "");
-  }, []);
+    const load = () => setProject(listKpiDashboardProjects().find((item) => item.id === projectId) ?? null);
+    load();
+    window.addEventListener(PROJECTS_EVENT, load);
+    window.addEventListener(KPI_REPORTS_EVENT, load);
+    return () => {
+      window.removeEventListener(PROJECTS_EVENT, load);
+      window.removeEventListener(KPI_REPORTS_EVENT, load);
+    };
+  }, [projectId]);
 
   if (role === null) return null;
-  if (role !== "State user" && role !== "Central user") {
-    return <EmptyState title="KPI Dashboard" message="This view is available to State and Central users." />;
+  if (role !== "State user" && role !== "Central user" && role !== "Admin user") {
+    return <EmptyState title="KPI Dashboard" message="This view is available to Admin, State, and Central users." />;
   }
   if (!project || (role === "State user" && !project.locations.some((location) => location.state === stateName))) {
     return <EmptyState title="Project not available" message="This project is outside your KPI Dashboard view." />;

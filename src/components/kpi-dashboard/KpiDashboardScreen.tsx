@@ -113,7 +113,7 @@ export function KpiDashboardScreen() {
   }, []);
 
   const availableProjects = useMemo(() => {
-    if (role === "Central user") return allProjects;
+    if (role === "Central user" || role === "Admin user") return allProjects;
     if (role === "State user") return allProjects.filter((project) => project.locations.some((location) => location.state === lockedState));
     return [];
   }, [allProjects, role, lockedState]);
@@ -174,10 +174,16 @@ export function KpiDashboardScreen() {
     const reported = kpisFor([project], activeFilters).filter((kpi) => kpi.reported !== false);
     return { id: project.id, label: project.name, value: reported.length ? averagePercent(reported) : null, note: reported.length ? `${reported.length} reported KPI results` : "No KPI results submitted" };
   }), [scoped, activeFilters]);
-  const byComponent = useMemo(() => unique(scoped.map((project) => project.component)).flatMap((component) => {
-    const rows = kpisFor(scoped, { ...activeFilters, component }).filter((kpi) => kpi.reported !== false);
-    return rows.length ? [{ label: componentShort(component), value: averagePercent(rows) }] : [];
-  }), [scoped, activeFilters]);
+  const byComponent = useMemo(() => {
+    const groups = new Map<string, ReturnType<typeof kpisFor>>();
+    unique(scoped.map((project) => project.component)).forEach((component) => {
+      const rows = kpisFor(scoped, { ...activeFilters, component }).filter((kpi) => kpi.reported !== false);
+      if (!rows.length) return;
+      const label = componentShort(component);
+      groups.set(label, [...(groups.get(label) ?? []), ...rows]);
+    });
+    return [...groups.entries()].map(([label, rows]) => ({ label, value: averagePercent(rows) }));
+  }, [scoped, activeFilters]);
   const finance = useMemo(() => scoped.map((project) => ({
     id: project.id,
     label: project.name,
@@ -200,8 +206,8 @@ export function KpiDashboardScreen() {
   }
 
   if (role === null) return null;
-  if (role !== "State user" && role !== "Central user") {
-    return <EmptyState title="KPI Dashboard" message="This view is available to State and Central users." />;
+  if (role !== "State user" && role !== "Central user" && role !== "Admin user") {
+    return <EmptyState title="KPI Dashboard" message="This view is available to Admin, State, and Central users." />;
   }
   if (!availableProjects.length) {
     return <EmptyState title="No KPI projects" message={lockedState ? `No monitored projects are recorded for ${lockedState}.` : "No monitored projects are available."} />;
@@ -425,8 +431,8 @@ function ComponentDonut({ rows }: { rows: { label: string; value: number }[] }) 
           <span className="donut-hub"><small>Avg</small><strong>{average}%</strong></span>
         </div>
         <ul>
-          {rows.map((row) => (
-            <li key={row.label}><i style={{ background: pinColors[row.label] ?? "#2f6fed" }} />{row.label}<strong>{row.value}%</strong></li>
+          {rows.map((row, index) => (
+            <li key={`${row.label}-${index}`}><i style={{ background: pinColors[row.label] ?? "#2f6fed" }} />{row.label}<strong>{row.value}%</strong></li>
           ))}
         </ul>
       </div> : <EmptyState title="No KPI submissions" message="Component achievement will appear after project KPIs are submitted." />}

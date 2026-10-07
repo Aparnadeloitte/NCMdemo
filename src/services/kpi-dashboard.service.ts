@@ -2,7 +2,7 @@ import { agencyById } from "@/data/central";
 import { districtCentroid, districtsByState, stateCentroids, states } from "@/data/options";
 import { seedProjects } from "@/data/projects";
 import type { DashKpi, DashLocation, DashProject } from "@/data/kpi-dashboard";
-import { listApprovedCentralProjects, listDashboardKpiReports } from "@/services/central-projects.service";
+import { centralAsPortalProject, listDashboardKpiReports, listStoredCentralProjects } from "@/services/central-projects.service";
 import { listApprovedStateProjects } from "@/services/state-projects.service";
 import { listStoredProjects } from "@/services/projects.service";
 import type { CentralKpi, CentralProject, KpiReport, NcmProject, StateProjectKpi, StateProjectProposal } from "@/types/domain";
@@ -169,6 +169,7 @@ function toDashboardProject(
   const documentNames = central
     ? [central.releaseDocument].filter(Boolean)
     : state ? Object.values(state.documents).filter(Boolean) : [];
+  const projectReports = reports.filter((report) => report.projectId === source.id);
 
   return {
     id: source.id,
@@ -182,21 +183,50 @@ function toDashboardProject(
     agencies,
     links,
     kpis,
-    documents: documentNames.map((name) => ({ name, kind: "Project" as const, date: source.updated })),
-    audit: [{ date: source.updated, actor: "Project record", action: "Published", note: "Included from the project register." }],
+    documents: [
+      ...documentNames.map((name) => ({ name, kind: "Project" as const, date: source.updated })),
+      ...projectReports.filter((report) => report.status === "approved").flatMap((report) => [...report.documents, ...report.photos].map((name) => ({ name, kind: "Evidence" as const, date: report.updated.slice(0, 10) }))),
+    ],
+    audit: central && projectReports.some((report) => report.status === "approved")
+      ? [
+        { date: source.updated, actor: "Admin user", action: "KPI review completed", note: "Approved KPI results and the project record are now in the dashboard source." },
+        ...projectReports.filter((report) => report.status !== "draft").map((report) => ({
+          date: report.updated.slice(0, 10),
+          actor: "Admin user",
+          action: report.status === "approved" ? "KPI approved" : "KPI returned",
+          note: report.reviewNote || report.remarks || report.achievement,
+        })),
+      ]
+      : [{ date: source.updated, actor: "Project record", action: "Published", note: "Included from the project register." }],
   };
 }
 
+function reviewIsFinal(reports: KpiReport[]) {
+  return reports.some((report) => report.status === "approved") && !reports.some((report) => report.status === "submitted");
+}
+
 export function listKpiDashboardProjects(): DashProject[] {
-  const centralProjects = new Map(listApprovedCentralProjects().map((project) => [project.id, project]));
-  const stateProjects = new Map(listApprovedStateProjects().map((project) => [project.id, project]));
   const reports = listDashboardKpiReports();
-  const projectsById = new Map(seedProjects.map((project) => [project.id, project]));
-  listStoredProjects().forEach((project) => projectsById.set(project.id, project));
-  return [...projectsById.values()].map((project) => toDashboardProject(
-    project,
-    centralProjects.get(project.id),
-    stateProjects.get(project.id),
-    reports,
-  ));
+  const byProject = new Map<string, KpiReport[]>();
+  reports.forEach((report) => {
+    const rows = byProject.get(report.projectId) ?? [];
+    rows.push(report);
+    byProject.set(report.projectId, rows);
+  });
+  const stored = new Map(listStoredProjects().map((project) => [project.id, project]));
+  const stateProjects = new Map(listApprovedStateProjects().map((project) => [project.id, project]));
+  const projects = new Map(seedProjects.map((project) => [
+    project.id,
+    toDashboardProject(project, undefined, stateProjects.get(project.id), reports),
+  ]));
+  const reviewed: DashProject[] = [];
+  listStoredCentralProjects().forEach((central) => {
+    const mine = byProject.get(central.id) ?? [];
+    if (!reviewIsFinal(mine)) return;
+    const source = stored.get(central.id) ?? centralAsPortalProject(central);
+    const row = toDashboardProject(source, central, undefined, mine);
+    projects.delete(central.id);
+    reviewed.push(row);
+  });
+  return [...reviewed, ...projects.values()];
 }

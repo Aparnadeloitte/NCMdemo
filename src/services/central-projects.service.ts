@@ -108,6 +108,14 @@ export function getCentralProject(id: string) {
   return readProjects().find((item) => item.id === id) ?? null;
 }
 
+export function listStoredCentralProjects() {
+  return readProjects();
+}
+
+export function centralAsPortalProject(project: CentralProject) {
+  return toPortalProject(project);
+}
+
 export function listOwnCentralProjects(email: string) {
   return readProjects().filter((item) => item.createdBy === email).sort((a, b) => b.updated.localeCompare(a.updated));
 }
