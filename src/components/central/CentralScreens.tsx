@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { CentralPreview } from "@/components/central/CentralPreview";
 import { CentralWizard } from "@/components/central/CentralWizard";
 import { agenciesForActivity, agencyById, locationLabel } from "@/data/central";
@@ -18,7 +17,6 @@ function Badge({ status }: { status: string }) {
 }
 
 export function CentralProjectList() {
-  const router = useRouter();
   const [role, setRole] = useState("");
   const [email, setEmail] = useState("");
   const [rows, setRows] = useState<CentralProject[]>([]);
@@ -29,18 +27,14 @@ export function CentralProjectList() {
     const nextRole = session?.role ?? "";
     const nextEmail = session?.identifier ?? "";
     setRole(nextRole);
-    if (nextRole === "Central user") {
-      router.replace("/projects");
-      return;
-    }
     setEmail(nextEmail);
     setRows(nextRole === "State user" ? listApprovedCentralProjects() : listOwnCentralProjects(nextEmail));
-  }, [router]);
-  const title = role === "State user" ? "My Projects" : "Central Projects";
+  }, []);
+  const title = "My Projects";
   const copy = role === "State user"
     ? "Projects approved by the NCM admin."
     : "Projects you have drafted or sent for review.";
-  if (!role || role === "Central user") return null;
+  if (!role) return null;
   return (
     <div className="page">
       <header className="page-head dash-head">
@@ -178,6 +172,53 @@ function reportingRows(project: CentralProject, email: string) {
   return rows;
 }
 
+function isPhotoFile(file: File) {
+  return file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp|heic|heif)$/i.test(file.name);
+}
+
+function EvidencePicker({ documents, photos, onChange }: { documents: string[]; photos: string[]; onChange: (next: { documents: string[]; photos: string[] }) => void }) {
+  function add(list: FileList | null) {
+    if (!list?.length) return;
+    const nextDocs = [...documents];
+    const nextPhotos = [...photos];
+    Array.from(list).forEach((file) => {
+      if (isPhotoFile(file)) {
+        if (!nextPhotos.includes(file.name)) nextPhotos.push(file.name);
+      } else if (!nextDocs.includes(file.name)) nextDocs.push(file.name);
+    });
+    onChange({ documents: nextDocs, photos: nextPhotos });
+  }
+  const files = [
+    ...documents.map((name) => ({ name, kind: "document" as const })),
+    ...photos.map((name) => ({ name, kind: "photo" as const })),
+  ];
+  function remove(kind: "document" | "photo", name: string) {
+    onChange({
+      documents: kind === "document" ? documents.filter((item) => item !== name) : documents,
+      photos: kind === "photo" ? photos.filter((item) => item !== name) : photos,
+    });
+  }
+  return (
+    <div className="kpi-files">
+      {files.length ? (
+        <ul>
+          {files.map((file) => (
+            <li key={`${file.kind}-${file.name}`}>
+              <span>{file.name}</span>
+              <button type="button" aria-label={`Remove ${file.name}`} onClick={() => remove(file.kind, file.name)}>×</button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <input aria-label="Evidence file" type="file" multiple onChange={(event) => { add(event.target.files); event.currentTarget.value = ""; }} />
+      <label className="text-link kpi-add">
+        Add more
+        <input aria-label="Add more evidence" type="file" multiple onChange={(event) => { add(event.target.files); event.currentTarget.value = ""; }} />
+      </label>
+    </div>
+  );
+}
+
 export function AgencyWorkspace({ projectId }: { projectId: string }) {
   const [project, setProject] = useState<CentralProject | null>(null);
   const [rows, setRows] = useState<KpiReport[]>([]);
@@ -234,8 +275,7 @@ export function AgencyWorkspace({ projectId }: { projectId: string }) {
                       {locked ? <span>{[...row.documents, ...row.photos].join(", ") || "—"}</span> : (
                         <>
                           <input aria-label="Remarks" placeholder="Remarks" value={row.remarks} onChange={(event) => patchRow(row.id, { remarks: event.target.value })} />
-                          <input aria-label="Document" type="file" onChange={(event) => patchRow(row.id, { documents: event.target.files?.[0] ? [event.target.files[0].name] : [] })} />
-                          <input aria-label="Geo-tagged photo" type="file" accept="image/*" onChange={(event) => patchRow(row.id, { photos: event.target.files?.[0] ? [event.target.files[0].name] : [] })} />
+                          <EvidencePicker documents={row.documents} photos={row.photos} onChange={(next) => patchRow(row.id, next)} />
                         </>
                       )}
                     </td>

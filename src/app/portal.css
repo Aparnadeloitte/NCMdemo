@@ -760,6 +760,12 @@ dl.kdash-detail { margin: 0; }
 .sent-doc { width: 83px; height: 83px; object-fit: contain; }
 .sent-ready strong { color: #121212; font-size: 18px; }
 .sent-ready p { margin: 0; max-width: 280px; color: #66788a; font-size: 14px; line-height: 1.45; }
+.kpi-files { display: grid; gap: 6px; margin-top: 8px; }
+.kpi-files ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.kpi-files li { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #526070; font-size: 13px; }
+.kpi-files li button { border: 0; background: transparent; color: #667085; font-size: 16px; line-height: 1; cursor: pointer; }
+.kpi-add { position: relative; width: fit-content; font-size: 13px; cursor: pointer; }
+.kpi-add input { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); }
 @media (max-width: 860px) {
   .sent-review { grid-template-columns: 1fr; }
 }
