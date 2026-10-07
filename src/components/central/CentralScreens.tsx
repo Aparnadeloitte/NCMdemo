@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { CentralPreview } from "@/components/central/CentralPreview";
 import { CentralWizard } from "@/components/central/CentralWizard";
 import { agenciesForActivity, agencyById, locationLabel } from "@/data/central";
@@ -18,7 +17,6 @@ function Badge({ status }: { status: string }) {
 }
 
 export function CentralProjectList() {
-  const router = useRouter();
   const [role, setRole] = useState("");
   const [email, setEmail] = useState("");
   const [rows, setRows] = useState<CentralProject[]>([]);
@@ -29,18 +27,14 @@ export function CentralProjectList() {
     const nextRole = session?.role ?? "";
     const nextEmail = session?.identifier ?? "";
     setRole(nextRole);
-    if (nextRole === "Central user") {
-      router.replace("/projects");
-      return;
-    }
     setEmail(nextEmail);
     setRows(nextRole === "State user" ? listApprovedCentralProjects() : listOwnCentralProjects(nextEmail));
-  }, [router]);
-  const title = role === "State user" ? "My Projects" : "Central Projects";
+  }, []);
+  const title = "My Projects";
   const copy = role === "State user"
     ? "Projects approved by the NCM admin."
     : "Projects you have drafted or sent for review.";
-  if (!role || role === "Central user") return null;
+  if (!role) return null;
   return (
     <div className="page">
       <header className="page-head dash-head">

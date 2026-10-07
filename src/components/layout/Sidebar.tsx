@@ -17,6 +17,7 @@ const items = [
 ];
 
 const roleItem: Record<string, { href: string; label: string; icon: string }[]> = {
+  "Central user": [{ href: "/central-projects", label: "My Projects", icon: "/images/document_sidemenu.svg" }],
   "Admin user": [
     { href: "/central-review", label: "Project Review", icon: "/images/approvals_sidemenu.svg" },
     { href: "/kpi-review", label: "KPI Review", icon: "/images/MRV Data_sidemenu.svg" },
