@@ -25,7 +25,6 @@ const components = [
   "Pollution Control",
 ];
 
-const fundingSources = ["NCM 2.0 central share", "State share", "CAMPA", "External aided", "Convergence"];
 const frequencies = ["Monthly", "Quarterly", "Half-yearly", "Annual"];
 const units = ["Hectares", "%", "Nos.", "km"];
 const evidenceTypes = ["Geo-photo", "Survey", "UC/PFMS", "Report", "Lab result"];
@@ -47,7 +46,7 @@ function validate(draft: StateProjectProposal, step: number) {
     if (!draft.start || !draft.end) return "Enter the start and end dates.";
     if (draft.start > draft.end) return "The end date must be after the start date.";
     if (!draft.budget.trim()) return "Enter the total approved budget.";
-    if (!draft.fundingSource) return "Select a funding source.";
+    if (!draft.fundingSource.trim()) return "Enter a funding source.";
     if (!draft.physicalTarget.trim()) return "Enter the physical target.";
     if (!draft.financialTarget.trim()) return "Enter the financial target.";
     if (!draft.reportingFrequency) return "Select a reporting frequency.";
@@ -272,9 +271,7 @@ export function StateProjectWizard() {
             </label>
             <label className="field">
               <span>Funding source</span>
-              <select value={draft.fundingSource} onChange={(event) => patch({ fundingSource: event.target.value })}>
-                {fundingSources.map((item) => <option key={item}>{item}</option>)}
-              </select>
+              <input value={draft.fundingSource} placeholder="NCM 2.0 central share" onChange={(event) => patch({ fundingSource: event.target.value })} />
             </label>
             <label className="field">
               <span>Physical target</span>
