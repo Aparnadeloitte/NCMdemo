@@ -285,7 +285,7 @@ export function blankLocation(): CentralLocation {
 }
 
 export function blankAssignment(): CentralAgencyAssignment {
-  return { id: rowId("agn"), agencyId: "", locationIds: [], activityIds: [] };
+  return { id: rowId("agn"), agencyId: "", locationIds: [], activityIds: [], subActivityIds: [] };
 }
 
 export function blankKpi(activityId = ""): CentralKpi {
