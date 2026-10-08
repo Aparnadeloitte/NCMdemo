@@ -286,6 +286,7 @@ export type KpiReport = {
   remarks: string;
   documents: string[];
   photos: string[];
+  files?: { name: string; dataUrl: string }[];
   status: KpiReportStatus;
   reviewNote: string;
   updated: string;

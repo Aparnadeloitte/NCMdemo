@@ -218,7 +218,9 @@ th { color: #66788a; font-size: 12px; font-weight: 800; }
 .ai-review-flags { margin: 0; padding-left: 16px; color: #66788a; font-size: 12px; line-height: 1.5; }
 .ai-checklist { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .ai-checklist li { display: grid; grid-template-columns: 118px minmax(0, 1fr); column-gap: 12px; align-items: start; padding: 10px 12px; border-radius: 8px; background: #fff; }
-.ai-checklist li strong { grid-row: 1 / span 2; align-self: center; font-size: 11px; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; }
+.ai-checklist li strong { grid-row: auto; align-self: center; font-size: 11px; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; }
+.evidence-links, .evidence-review { display: grid; gap: 4px; margin: 6px 0 0; padding: 0; list-style: none; }
+.evidence-links .text-link, .evidence-review .text-link { font-size: 13px; font-weight: 700; text-align: left; }
 .ai-checklist li span { color: #121212; font-size: 13px; font-weight: 700; }
 .ai-checklist li p { margin: 2px 0 0; color: #526070; font-size: 12.5px; line-height: 1.45; }
 @media (max-width: 640px) {

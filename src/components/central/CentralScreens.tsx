@@ -234,53 +234,102 @@ function isPhotoFile(file: File) {
   return file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp|heic|heif)$/i.test(file.name);
 }
 
+type EvidenceFile = { name: string; dataUrl: string };
+
+function readEvidenceFile(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error(`Unable to read ${file.name}.`));
+    reader.readAsDataURL(file);
+  });
+}
+
+function reportEvidence(report: KpiReport): EvidenceFile[] {
+  return [...report.documents, ...report.photos].map((name) => ({
+    name,
+    dataUrl: getReportFileUrl(report.id, name) || report.files?.find((file) => file.name === name)?.dataUrl || "",
+  }));
+}
+
+function openEvidence(file: EvidenceFile) {
+  if (!file.dataUrl) return;
+  const [header, body] = file.dataUrl.split(",");
+  const mime = header.match(/data:([^;]+)/)?.[1] || "application/octet-stream";
+  const binary = atob(body ?? "");
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
+  const opened = window.open(url, "_blank", "noopener");
+  if (opened) return;
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = file.name;
+  anchor.click();
+}
+
+function EvidenceLinks({ files }: { files: EvidenceFile[] }) {
+  const openable = files.filter((file) => file.dataUrl);
+  if (!openable.length) return null;
+  return (
+    <ul className="evidence-links">
+      {openable.map((file) => (
+        <li key={`${file.name}-${file.dataUrl.slice(0, 48)}`}>
+          <button type="button" className="text-link" onClick={() => openEvidence(file)}>{file.name}</button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function EvidencePicker({ reportId, documents, photos, acceptTypes, onChange, onReject }: { reportId: string; documents: string[]; photos: string[]; acceptTypes: string[]; onChange: (next: { documents: string[]; photos: string[] }) => void; onReject: (message: string) => void }) {
-  function add(list: FileList | null) {
+  async function add(list: FileList | null) {
     if (!list?.length) return;
-    const nextDocs = [...documents];
-    const nextPhotos = [...photos];
     const rejected: string[] = [];
-    Array.from(list).forEach((file) => {
-      if (!fileMatchesKpiTypes(file, acceptTypes)) {
-        rejected.push(file.name);
-        return;
-      }
-      if (isPhotoFile(file)) {
-        if (!nextPhotos.includes(file.name)) nextPhotos.push(file.name);
-      } else if (!nextDocs.includes(file.name)) nextDocs.push(file.name);
-      const reader = new FileReader();
-      reader.onload = () => { if (typeof reader.result === "string") saveReportFile(reportId, file.name, reader.result); };
-      reader.readAsDataURL(file);
+    const accepted = Array.from(list).filter((file) => {
+      if (fileMatchesKpiTypes(file, acceptTypes)) return true;
+      rejected.push(file.name);
+      return false;
     });
-    onChange({ documents: nextDocs, photos: nextPhotos });
+    try {
+      const read = await Promise.all(accepted.map(async (file) => ({ name: file.name, dataUrl: await readEvidenceFile(file), photo: isPhotoFile(file) })));
+      const nextDocs = [...documents];
+      const nextPhotos = [...photos];
+      read.forEach((file) => {
+        saveReportFile(reportId, file.name, file.dataUrl);
+        if (file.photo) {
+          if (!nextPhotos.includes(file.name)) nextPhotos.push(file.name);
+        } else if (!nextDocs.includes(file.name)) nextDocs.push(file.name);
+      });
+      onChange({ documents: nextDocs, photos: nextPhotos });
+    } catch (caught) {
+      onReject(caught instanceof Error ? caught.message : "Unable to read the selected file.");
+    }
     if (rejected.length) onReject(`Only the file types selected for this KPI are allowed. Rejected: ${rejected.join(", ")}.`);
   }
-  const files = [
-    ...documents.map((name) => ({ name, kind: "document" as const })),
-    ...photos.map((name) => ({ name, kind: "photo" as const })),
-  ];
-  function remove(kind: "document" | "photo", name: string) {
+  const shown = [...documents, ...photos].map((name) => ({ name, dataUrl: getReportFileUrl(reportId, name) }));
+  function remove(name: string) {
     onChange({
-      documents: kind === "document" ? documents.filter((item) => item !== name) : documents,
-      photos: kind === "photo" ? photos.filter((item) => item !== name) : photos,
+      documents: documents.filter((item) => item !== name),
+      photos: photos.filter((item) => item !== name),
     });
   }
   return (
     <div className="kpi-files">
-      {files.length ? (
+      {shown.length ? (
         <ul>
-          {files.map((file) => (
-            <li key={`${file.kind}-${file.name}`}>
-              <span>{file.name}</span>
-              <button type="button" aria-label={`Remove ${file.name}`} onClick={() => remove(file.kind, file.name)}>×</button>
+          {shown.map((file) => (
+            <li key={file.name}>
+              {file.dataUrl ? <button type="button" className="text-link" onClick={() => openEvidence(file)}>{file.name}</button> : <span>{file.name}</span>}
+              <button type="button" aria-label={`Remove ${file.name}`} onClick={() => remove(file.name)}>×</button>
             </li>
           ))}
         </ul>
       ) : null}
-      <input aria-label="Evidence file" type="file" multiple accept={kpiFileAccept(acceptTypes)} onChange={(event) => { add(event.target.files); event.currentTarget.value = ""; }} />
+      <input aria-label="Evidence file" type="file" multiple accept={kpiFileAccept(acceptTypes)} onChange={(event) => { void add(event.target.files); event.currentTarget.value = ""; }} />
       <label className="text-link kpi-add">
         Add more
-        <input aria-label="Add more evidence" type="file" multiple accept={kpiFileAccept(acceptTypes)} onChange={(event) => { add(event.target.files); event.currentTarget.value = ""; }} />
+        <input aria-label="Add more evidence" type="file" multiple accept={kpiFileAccept(acceptTypes)} onChange={(event) => { void add(event.target.files); event.currentTarget.value = ""; }} />
       </label>
     </div>
   );
@@ -376,7 +425,8 @@ function aiChecks(report: KpiReport, project: CentralProject) {
   const bounds = kpi ? kpiTargetBounds(kpi) : { min: Number.NaN, max: Number.NaN };
   const prior = report.history.slice(0, -1);
   const evidenceNeeded = Boolean(kpi && kpiEvidenceRequired(kpi));
-  const hasEvidence = report.documents.length > 0 || report.photos.length > 0;
+  const evidenceFiles = reportEvidence(report);
+  const hasEvidence = evidenceFiles.length > 0;
   const hasAchievement = report.achievement.trim().length > 0;
   const duplicate = prior.some((item) => item.achievement === report.achievement);
   const comparable = Number.isFinite(achievement) && Number.isFinite(bounds.max);
@@ -384,7 +434,7 @@ function aiChecks(report: KpiReport, project: CentralProject) {
   const linked = agenciesForActivity(project, kpi?.activityId ?? "").length > 0;
   const openBoundary = Boolean(location?.polygon.some((ring) => ring.length > 0) && !location.polygon.some((ring) => ring.length >= 3));
   return [
-    { label: "Evidence attached", detail: hasEvidence ? "A document or geo-tagged photo is attached to this submission." : "No document or geo-tagged photo is attached.", warn: !hasEvidence },
+    { label: "Evidence attached", detail: !evidenceNeeded && !hasEvidence ? "This KPI does not require an evidence file." : hasEvidence ? `${evidenceFiles.length} file${evidenceFiles.length === 1 ? "" : "s"} uploaded for this KPI.` : "No evidence file is attached.", warn: evidenceNeeded && !hasEvidence, files: evidenceFiles },
     { label: "Achievement reported", detail: hasAchievement ? "An achievement value is present for this KPI." : "The achievement field is blank.", warn: !hasAchievement },
     { label: "Duplicate check", detail: duplicate ? "This achievement matches an earlier submission for the same KPI." : "This achievement does not match an earlier submission.", warn: duplicate },
     { label: "Target comparison", detail: comparable ? `Reported ${achievement} against the approved target of ${kpi ? kpiTargetText(kpi) : "—"}.` : "The achievement or target is not a number, so the variance cannot be calculated.", warn: false },
@@ -463,18 +513,7 @@ export function KpiReviewDetail({ reportId: id }: { reportId: string }) {
           <div><dt>Agency</dt><dd>{agencyById(report.agencyId)?.name}</dd></div>
         </dl>
         <p>Remarks: {report.remarks || "—"}</p>
-        <p>
-          Evidence:{" "}
-          {[...report.documents, ...report.photos].length ? [...report.documents, ...report.photos].map((name, index) => {
-            const url = getReportFileUrl(report.id, name);
-            return (
-              <span key={`${name}-${index}`}>
-                {index > 0 ? ", " : ""}
-                {url ? <a className="text-link" href={url} target="_blank" rel="noreferrer">{name}</a> : name}
-              </span>
-            );
-          }) : "None"}
-        </p>
+        <div className="evidence-review"><span>Evidence</span>{reportEvidence(currentReport).some((file) => file.dataUrl) ? <EvidenceLinks files={reportEvidence(currentReport)} /> : <p>{reportEvidence(currentReport).map((file) => file.name).join(", ") || (kpi && !kpiEvidenceRequired(kpi) ? "Not required" : "None")}</p>}</div>
         <h3>Previous submissions</h3>
         {report.history.length === 0 ? <p className="field-hint">This is the first submission.</p> : <ul className="doc-summary">{report.history.map((item) => <li key={item.at}>{item.status}: {item.achievement} · {item.at.slice(0, 10)}</li>)}</ul>}
         {report.status === "submitted" ? (
@@ -491,8 +530,11 @@ export function KpiReviewDetail({ reportId: id }: { reportId: string }) {
                   {checks.map((check) => (
                     <li key={check.label} className={check.warn ? "ai-check-warn" : "ai-check-pass"}>
                       <strong>{check.warn ? "Needs attention" : "Clear"}</strong>
-                      <span>{check.label}</span>
-                      <p>{check.detail}</p>
+                      <div>
+                        <span>{check.label}</span>
+                        <p>{check.detail}</p>
+                        <EvidenceLinks files={check.files ?? []} />
+                      </div>
                     </li>
                   ))}
                 </ul>
