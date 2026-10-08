@@ -5,6 +5,7 @@ import Link from "next/link";
 import { KpiSiteMap } from "@/components/kpi-dashboard/KpiSiteMap";
 import { DataTable, Pagination } from "@/components/ui/DataTable";
 import { EmptyState, StatusBadge } from "@/components/ui/Feedback";
+import { AttachmentIcon } from "@/components/ui/icons";
 import {
   averagePercent,
   componentShort,
@@ -94,7 +95,7 @@ function Overview({ project }: { project: DashProject }) {
   const reportedKpis = project.kpis.filter((kpi) => kpi.reported !== false);
   return (
     <section className="panel">
-      <header><h2>Overview</h2><p>Project details, funding, and status.</p></header>
+      <header><div><h2>Overview</h2><p>Project details, funding, and status.</p></div></header>
       <dl className="kdash-detail">
         <div><dt>Component</dt><dd>{componentShort(project.component)}</dd></div>
         <div><dt>Status</dt><dd>{project.status}</dd></div>
@@ -113,7 +114,7 @@ function Locations({ project, selectedPin, onSelect }: { project: DashProject; s
   const pins = project.locations.map((location) => ({ id: location.id, name: location.name, lat: location.lat, lng: location.lng, color }));
   return (
     <section className="panel">
-      <header><h2>Locations</h2><p>Site map and the list of project locations.</p></header>
+      <header><div><h2>Locations</h2><p>Site map and the list of project locations.</p></div></header>
       <div className="kdash-split">
         <KpiSiteMap pins={pins} selectedId={selectedPin} onSelect={onSelect} />
         <ul className="kdash-brief">
@@ -135,7 +136,7 @@ function Locations({ project, selectedPin, onSelect }: { project: DashProject; s
 function Activities({ project }: { project: DashProject }) {
   return (
     <section className="panel">
-      <header><h2>Activities</h2><p>Implementation progress is the average achievement of the KPIs linked to each activity.</p></header>
+      <header><div><h2>Activities</h2><p>Implementation progress is the average achievement of the KPIs linked to each activity.</p></div></header>
       <div className="kdash-bars">
         {project.activities.map((activity) => {
           const rows = project.kpis.filter((kpi) => kpi.activity === activity);
@@ -162,7 +163,7 @@ function Agencies({ project }: { project: DashProject }) {
   const visible = project.links.slice((page - 1) * pageSize, page * pageSize);
   return (
     <section className="panel projects-table">
-      <header><h2>Implementation agencies</h2><p>Each agency is mapped to the locations and activities it carries out.</p></header>
+      <header><div><h2>Implementation agencies</h2><p>Each agency is mapped to the locations and activities it carries out.</p></div></header>
       <DataTable
         rows={visible}
         rowKey={(row) => `${row.agency}:${row.locationId}:${row.activity}`}
@@ -175,6 +176,25 @@ function Agencies({ project }: { project: DashProject }) {
       <Pagination page={page} pageSize={pageSize} total={project.links.length} onPage={setPage} />
     </section>
   );
+}
+
+async function downloadKpiGrid(projectName: string, rows: DashKpi[], project: DashProject) {
+  const XLSX = await import("xlsx");
+  const sheet = XLSX.utils.json_to_sheet(rows.map((row) => ({
+    KPI: row.name,
+    Activity: row.activity,
+    "Sub-activity": row.group,
+    Location: locationById(project, row.locationId)?.name ?? "",
+    Agency: row.agency,
+    Target: formatMeasure(row.target, row.unit),
+    Achievement: row.reported === false ? "Not reported" : formatMeasure(row.achievement, row.unit),
+    "Achievement %": row.reported === false ? "\u2014" : `${kpiPercent(row)}%`,
+    Verification: row.status,
+    Attachment: row.evidence,
+  })));
+  const book = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(book, sheet, "KPIs");
+  XLSX.writeFile(book, `${projectName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-kpis.xlsx`);
 }
 
 function Kpis({ project, page, onPage, open, onOpen }: { project: DashProject; page: number; onPage: (page: number) => void; open: DashKpi | null; onOpen: (id: string) => void }) {
@@ -191,19 +211,23 @@ function Kpis({ project, page, onPage, open, onOpen }: { project: DashProject; p
   const visible = rows.slice((page - 1) * pageSize, page * pageSize);
   return (
     <section className="panel projects-table kdash-kpi-table">
-      <header><h2>KPIs</h2><p>Open a KPI for its definition, history, evidence, remarks, and review.</p></header>
+      <header>
+        <div><h2>KPIs</h2><p>Open a KPI for its definition, history, evidence, remarks, and review.</p></div>
+        <button type="button" className="btn-ghost" onClick={() => void downloadKpiGrid(project.name, rows, project)}>Download KPIs</button>
+      </header>
       <DataTable
         rows={visible}
         rowKey={(row) => row.id}
         columns={[
           { key: "kpi", header: "KPI", render: (row) => <button type="button" className="kdash-kpi" onClick={() => onOpen(row.id === open?.id ? "" : row.id)}>{row.name}</button> },
           { key: "activity", header: "Activity", render: (row) => row.activity },
+          { key: "subActivity", header: "Sub-activity", render: (row) => row.group },
           { key: "location", header: "Location", render: (row) => locationById(project, row.locationId)?.name ?? "" },
           { key: "agency", header: "Agency", render: (row) => row.agency },
           { key: "target", header: "Target", render: (row) => formatMeasure(row.target, row.unit) },
           { key: "achievement", header: "Achievement", render: (row) => row.reported === false ? "Not reported" : formatMeasure(row.achievement, row.unit) },
-          { key: "progress", header: "% Progress", render: (row) => row.reported === false ? "—" : `${kpiPercent(row)}%` },
           { key: "status", header: "Verification", render: (row) => <span className={`kdash-pill ${row.status.toLowerCase()}`}>{row.status}</span> },
+          { key: "attachment", header: "Attachment", render: (row) => <button type="button" className="view-icon-btn" aria-label={`View attachment for ${row.name}`} title={row.evidence} onClick={() => onOpen(row.id === open?.id ? "" : row.id)}><AttachmentIcon /></button> },
         ]}
       />
       <Pagination page={page} pageSize={pageSize} total={rows.length} onPage={onPage} />
@@ -243,7 +267,7 @@ function Documents({ project }: { project: DashProject }) {
   const visible = rows.slice((page - 1) * pageSize, page * pageSize);
   return (
     <section className="panel projects-table">
-      <header><h2>Documents</h2><p>Project documents and KPI evidence.</p></header>
+      <header><div><h2>Documents</h2><p>Project documents and KPI evidence.</p></div></header>
       <DataTable
         rows={visible}
         rowKey={(row) => `${row.kind}:${row.name}`}
@@ -269,7 +293,7 @@ function Audit({ project, page, onPage }: { project: DashProject; page: number; 
   const visible = rows.slice((page - 1) * pageSize, page * pageSize);
   return (
     <section className="panel projects-table">
-      <header><h2>Audit trail</h2><p>Submission, review, approval, and status changes for this project and its KPI reports.</p></header>
+      <header><div><h2>Audit trail</h2><p>Submission, review, approval, and status changes for this project and its KPI reports.</p></div></header>
       <DataTable
         rows={visible}
         rowKey={(row) => `${row.date}:${row.action}:${row.note}`}

@@ -9,3 +9,11 @@ export function TrashIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+export function AttachmentIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" aria-hidden="true" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M13.5 6.5 7.9 12.1a2.3 2.3 0 0 0 3.25 3.25l5.6-5.6a3.8 3.8 0 0 0-5.37-5.37L5.77 9.98a5.3 5.3 0 0 0 7.5 7.5" />
+    </svg>
+  );
+}

@@ -86,6 +86,23 @@ function quarterlySubmissions(projects: DashProject[]) {
   return periods;
 }
 
+async function downloadKpiDashboard(data: {
+  summary: Record<string, string>[];
+  projects: Record<string, string>[];
+  targets: Record<string, string>[];
+  finance: Record<string, string>[];
+  blueFlag: Record<string, string>[];
+}) {
+  const XLSX = await import("xlsx");
+  const book = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(data.summary), "Summary");
+  XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(data.projects), "Projects");
+  XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(data.targets), "Target vs Achieved");
+  XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(data.finance), "Financial Utilisation");
+  if (data.blueFlag.length) XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(data.blueFlag), "Blue Flag Locations");
+  XLSX.writeFile(book, `ncm-kpi-dashboard-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
 export function KpiDashboardScreen() {
   const [role, setRole] = useState<string | null>(null);
   const [lockedState, setLockedState] = useState("");
@@ -205,6 +222,37 @@ export function KpiDashboardScreen() {
     window.requestAnimationFrame(() => document.getElementById("project-view")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
+  function handleDownloadDashboard() {
+    void downloadKpiDashboard({
+      summary: cards.map((card) => ({ Metric: card.label, Value: card.value, Note: card.note })),
+      projects: scoped.map((project) => {
+        const reported = project.kpis.filter((kpi) => kpi.reported !== false);
+        return {
+          Project: project.name,
+          Component: componentShort(project.component),
+          "Location(s)": project.locations.filter((location) => locationMatchesFilters(project, location, activeFilters)).map((location) => location.name).join(", "),
+          Agency: project.agencies.join(", "),
+          Funding: `${formatCrore(project.approvedCost)} \u00b7 ${project.utilised === null ? "utilisation not reported" : `${Math.round((project.utilised / project.approvedCost) * 100)}% used`}`,
+          "KPI progress": reported.length ? `${averagePercent(reported)}%` : "No reports",
+          Status: project.status,
+        };
+      }),
+      targets: targetRows.map(({ project, kpi }) => ({
+        Project: project.name,
+        KPI: kpi.name,
+        Target: formatMeasure(kpi.target, kpi.unit),
+        Achieved: kpi.reported === false ? "Not reported" : formatMeasure(kpi.achievement, kpi.unit),
+        "Achievement %": kpi.reported === false ? "\u2014" : `${kpiPercent(kpi)}%`,
+      })),
+      finance: finance.map((row) => ({
+        Project: row.label,
+        "Approved funding": formatCrore(row.approved),
+        Utilisation: row.used === null || row.approved <= 0 ? "Not reported" : `${Math.round((row.used / row.approved) * 100)}%`,
+      })),
+      blueFlag: blueFlagLocations.map((row) => ({ Project: row.project, Location: row.location, District: row.district, "State / UT": row.state })),
+    });
+  }
+
   if (role === null) return null;
   if (role !== "State user" && role !== "Central user" && role !== "Admin user") {
     return <EmptyState title="KPI Dashboard" message="This view is available to Admin, State, and Central users." />;
@@ -220,6 +268,7 @@ export function KpiDashboardScreen() {
           <h1>KPI Dashboard</h1>
           <p>Blue Flag beaches, mangrove and coral conservation, and coastal wetland restoration. {lockedState ? `Showing ${lockedState}.` : "Showing every coastal state and UT."}</p>
         </div>
+        <button type="button" className="btn-ghost" onClick={handleDownloadDashboard}>Download Dashboard</button>
       </header>
 
       <section className="kpi-grid dash-kpis kdash-cards" aria-label="KPI summary">
@@ -270,7 +319,7 @@ export function KpiDashboardScreen() {
         <ChartPanel title="Project-wise KPI Achievement" description="Average achieved-to-target percentage across reported KPI rows; each KPI is normalized before averaging." rows={byProject} />
         <ComponentDonut rows={byComponent} />
         <section className="panel">
-          <header><h2>Target vs Achieved by Project</h2><p>Each KPI is shown in its own unit; project achievement is the average of reported KPI percentages.</p></header>
+          <header><div><h2>Target vs Achieved by Project</h2><p>Each KPI is shown in its own unit; project achievement is the average of reported KPI percentages.</p></div></header>
           {targetRows.length ? (
             <div className="table-wrap">
               <table>
@@ -291,7 +340,7 @@ export function KpiDashboardScreen() {
           ) : <EmptyState title="No project KPIs" message="Project KPI targets will appear here when available." />}
         </section>
         <section className="panel">
-          <header><h2>Financial Utilisation by Project</h2><p>Approved funding is shown per project. Utilisation appears only when it has been reported.</p></header>
+          <header><div><h2>Financial Utilisation by Project</h2><p>Approved funding is shown per project. Utilisation appears only when it has been reported.</p></div></header>
           <div className="kdash-bars kdash-finance">
             {finance.map((row) => {
               const max = Math.max(...finance.map((item) => item.approved), 1);
@@ -310,7 +359,7 @@ export function KpiDashboardScreen() {
           {!finance.length ? <EmptyState title="No projects" message="Approved funding will appear here when projects are added." /> : null}
         </section>
         <section className="panel">
-          <header><h2>KPI Submission Trend</h2><p>Number of KPI report submissions recorded in each fiscal quarter.</p></header>
+          <header><div><h2>KPI Submission Trend</h2><p>Number of KPI report submissions recorded in each fiscal quarter.</p></div></header>
           <TrendChart rows={trend} />
         </section>
         <section className="panel">
@@ -343,7 +392,7 @@ export function KpiDashboardScreen() {
 
       {blueFlagLocations.length ? (
         <section className="panel">
-          <header><h2>Blue Flag Project Locations</h2><p>Published project sites for the selected dashboard scope.</p></header>
+          <header><div><h2>Blue Flag Project Locations</h2><p>Published project sites for the selected dashboard scope.</p></div></header>
           <div className="table-wrap">
             <table>
               <thead><tr><th>Project</th><th>Location</th><th>District</th><th>State / UT</th></tr></thead>
@@ -354,7 +403,7 @@ export function KpiDashboardScreen() {
       ) : null}
 
       <section className="panel projects-table">
-        <header><h2>Project list</h2></header>
+        <header><div><h2>Project list</h2><p>Every monitored project in scope, with locations, agency, funding utilisation and KPI progress.</p></div></header>
         {pageRows.length ? (
           <>
             <DataTable
@@ -399,7 +448,7 @@ export function KpiDashboardScreen() {
 function ChartPanel({ title, description, rows }: { title: string; description: string; rows: { id: string; label: string; value: number | null; note?: string }[] }) {
   return (
     <section className="panel">
-      <header><h2>{title}</h2><p>{description}</p></header>
+      <header><div><h2 title={title}>{title}</h2><p>{description}</p></div></header>
       {rows.length ? <div className="kdash-bars">
         {rows.map((row) => (
           <div key={row.id} className="kdash-pair">
@@ -425,7 +474,7 @@ function ComponentDonut({ rows }: { rows: { label: string; value: number }[] }) 
   }).join(", ") : "#e6edf5 0% 100%";
   return (
     <section className="panel">
-      <header><h2>KPI achievement by NCM component</h2></header>
+      <header><div><h2>KPI achievement by NCM component</h2><p>Average reported KPI achievement grouped by NCM component type.</p></div></header>
       {rows.length ? <div className="donut-wrap status-donut">
         <div className="donut" style={{ background: `conic-gradient(${gradient})` }} aria-hidden="true">
           <span className="donut-hub"><small>Avg</small><strong>{average}%</strong></span>
