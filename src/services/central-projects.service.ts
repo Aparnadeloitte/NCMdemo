@@ -4,6 +4,7 @@ import type { CentralProject, KpiReport, NcmProject } from "@/types/domain";
 
 const PROJECTS_KEY = "ncm.central.projects";
 const REPORTS_KEY = "ncm.central.reports";
+const REPORT_FILES_KEY = "ncm.central.report-files";
 export const KPI_REPORTS_EVENT = "ncm-kpi-reports-changed";
 
 function readProjects(): CentralProject[] {
@@ -37,6 +38,36 @@ function readReports(): KpiReport[] {
 function writeReports(items: KpiReport[]) {
   localStorage.setItem(REPORTS_KEY, JSON.stringify(items));
   if (typeof window !== "undefined") window.dispatchEvent(new Event(KPI_REPORTS_EVENT));
+}
+
+function readReportFiles(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const raw = localStorage.getItem(REPORT_FILES_KEY);
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed as Record<string, string> : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeReportFiles(files: Record<string, string>) {
+  localStorage.setItem(REPORT_FILES_KEY, JSON.stringify(files));
+}
+
+function fileKey(reportId: string, name: string) {
+  return `${reportId}::${name}`;
+}
+
+export function saveReportFile(reportId: string, name: string, dataUrl: string) {
+  const files = readReportFiles();
+  files[fileKey(reportId, name)] = dataUrl;
+  writeReportFiles(files);
+}
+
+export function getReportFileUrl(reportId: string, name: string) {
+  return readReportFiles()[fileKey(reportId, name)] ?? "";
 }
 
 function nextId(items: CentralProject[]) {

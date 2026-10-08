@@ -6,7 +6,7 @@ import { CentralPreview } from "@/components/central/CentralPreview";
 import { CentralWizard } from "@/components/central/CentralWizard";
 import { agenciesForActivity, agencyById, fileMatchesKpiTypes, kpiEvidenceRequired, kpiEvidenceTypes, kpiFileAccept, kpiTargetBounds, kpiTargetText, locationLabel } from "@/data/central";
 import { getSession } from "@/lib/session";
-import { addCentralProjectFeedback, assignmentsForUser, getCentralProject, listAgencyCentralProjects, listApprovedCentralProjects, listOwnCentralProjects, listReviewCentralProjects, listSubmittedKpiReports, reportId, reportsForProject, reviewCentralProject, reviewKpiReport, upsertKpiReports } from "@/services/central-projects.service";
+import { addCentralProjectFeedback, assignmentsForUser, getCentralProject, getReportFileUrl, listAgencyCentralProjects, listApprovedCentralProjects, listOwnCentralProjects, listReviewCentralProjects, listSubmittedKpiReports, reportId, reportsForProject, reviewCentralProject, reviewKpiReport, saveReportFile, upsertKpiReports } from "@/services/central-projects.service";
 import type { CentralProject, KpiReport } from "@/types/domain";
 
 const statusLabel: Record<string, string> = { draft: "Draft", submitted: "Submitted", returned: "Returned", approved: "Approved", verified: "Verified" };
@@ -234,7 +234,7 @@ function isPhotoFile(file: File) {
   return file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp|heic|heif)$/i.test(file.name);
 }
 
-function EvidencePicker({ documents, photos, acceptTypes, onChange, onReject }: { documents: string[]; photos: string[]; acceptTypes: string[]; onChange: (next: { documents: string[]; photos: string[] }) => void; onReject: (message: string) => void }) {
+function EvidencePicker({ reportId, documents, photos, acceptTypes, onChange, onReject }: { reportId: string; documents: string[]; photos: string[]; acceptTypes: string[]; onChange: (next: { documents: string[]; photos: string[] }) => void; onReject: (message: string) => void }) {
   function add(list: FileList | null) {
     if (!list?.length) return;
     const nextDocs = [...documents];
@@ -248,6 +248,9 @@ function EvidencePicker({ documents, photos, acceptTypes, onChange, onReject }: 
       if (isPhotoFile(file)) {
         if (!nextPhotos.includes(file.name)) nextPhotos.push(file.name);
       } else if (!nextDocs.includes(file.name)) nextDocs.push(file.name);
+      const reader = new FileReader();
+      reader.onload = () => { if (typeof reader.result === "string") saveReportFile(reportId, file.name, reader.result); };
+      reader.readAsDataURL(file);
     });
     onChange({ documents: nextDocs, photos: nextPhotos });
     if (rejected.length) onReject(`Only the file types selected for this KPI are allowed. Rejected: ${rejected.join(", ")}.`);
@@ -321,9 +324,9 @@ export function AgencyWorkspace({ projectId }: { projectId: string }) {
       <header className="page-head"><div><p className="crumb"><Link href="/my-projects">My Projects</Link></p><h1>{project.name}</h1><p>Project configuration is read-only. Report achievement against each assigned KPI.</p></div></header>
       <CentralPreview project={project} />
       <section className="panel proposal-card">
-        <header><h2>KPI reporting</h2></header>
+        <header><div><h2>KPI reporting</h2><p>Enter the achievement, remarks and evidence for each assigned KPI, then submit for NCM review.</p></div></header>
         <div className="table-wrap">
-          <table className="proposal-table">
+          <table className="proposal-table kpi-report-table">
             <thead><tr><th>KPI</th><th>Location</th><th>Activity</th><th>Target</th><th>Achievement</th><th>Status</th><th>Evidence</th></tr></thead>
             <tbody>
               {rows.map((row) => {
@@ -341,10 +344,10 @@ export function AgencyWorkspace({ projectId }: { projectId: string }) {
                     <td><Badge status={row.status} />{row.reviewNote ? <span className="cell-sub">{row.reviewNote}</span> : null}</td>
                     <td>
                       {locked ? <span>{kpi && !kpiEvidenceRequired(kpi) ? "Not required" : [...row.documents, ...row.photos].join(", ") || "—"}</span> : (
-                        <>
+                        <div className="kpi-evidence-cell">
                           <input aria-label="Remarks" placeholder="Remarks" value={row.remarks} onChange={(event) => patchRow(row.id, { remarks: event.target.value })} />
-                          {kpi && kpiEvidenceRequired(kpi) ? <EvidencePicker documents={row.documents} photos={row.photos} acceptTypes={kpiEvidenceTypes(kpi)} onChange={(next) => patchRow(row.id, next)} onReject={setError} /> : null}
-                        </>
+                          {kpi && kpiEvidenceRequired(kpi) ? <EvidencePicker reportId={row.id} documents={row.documents} photos={row.photos} acceptTypes={kpiEvidenceTypes(kpi)} onChange={(next) => patchRow(row.id, next)} onReject={setError} /> : null}
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -460,7 +463,18 @@ export function KpiReviewDetail({ reportId: id }: { reportId: string }) {
           <div><dt>Agency</dt><dd>{agencyById(report.agencyId)?.name}</dd></div>
         </dl>
         <p>Remarks: {report.remarks || "—"}</p>
-        <p>Evidence: {[...report.documents, ...report.photos].join(", ") || "None"}</p>
+        <p>
+          Evidence:{" "}
+          {[...report.documents, ...report.photos].length ? [...report.documents, ...report.photos].map((name, index) => {
+            const url = getReportFileUrl(report.id, name);
+            return (
+              <span key={`${name}-${index}`}>
+                {index > 0 ? ", " : ""}
+                {url ? <a className="text-link" href={url} target="_blank" rel="noreferrer">{name}</a> : name}
+              </span>
+            );
+          }) : "None"}
+        </p>
         <h3>Previous submissions</h3>
         {report.history.length === 0 ? <p className="field-hint">This is the first submission.</p> : <ul className="doc-summary">{report.history.map((item) => <li key={item.at}>{item.status}: {item.achievement} · {item.at.slice(0, 10)}</li>)}</ul>}
         {report.status === "submitted" ? (
