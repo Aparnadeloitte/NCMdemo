@@ -69,7 +69,7 @@ export function CentralPreview({ project }: { project: CentralProject }) {
       <section className="location-card review-kv-card">
         <h3 className="review-subhead">Implementation agencies</h3>
         <table className="proposal-table">
-          <thead><tr><th>Agency</th><th>Contact</th><th>Locations</th><th>Activities</th></tr></thead>
+          <thead><tr><th>Agency</th><th>Contact</th><th>Locations</th><th>Activities</th><th>Sub-activities</th></tr></thead>
           <tbody>
             {project.agencies.map((assignment) => {
               const agency = agencyById(assignment.agencyId);
@@ -80,6 +80,9 @@ export function CentralPreview({ project }: { project: CentralProject }) {
                   <td>{`${agency?.contact ?? ""}, ${agency?.designation ?? ""} · ${agency?.email ?? ""} · ${agency?.mobile ?? ""}`}</td>
                   <td>{locationsForAssignment(project, assignment).map(locationLabel).join("; ") || "—"}</td>
                   <td>{activities.map((item) => item.name).join(", ") || "—"}</td>
+                  <td>{activities.flatMap((activity) => (activity.subActivities ?? [])
+                    .filter((item) => assignment.subActivityIds?.includes(item.id))
+                    .map((item) => `${activity.name}: ${item.name}`)).join("; ") || "—"}</td>
                 </tr>
               );
             })}

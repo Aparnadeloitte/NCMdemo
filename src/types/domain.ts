@@ -225,6 +225,7 @@ export type CentralAgencyAssignment = {
   agencyId: string;
   locationIds: string[];
   activityIds: string[];
+  subActivityIds?: string[];
 };
 
 export type CentralKpi = {

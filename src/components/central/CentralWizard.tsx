@@ -207,7 +207,22 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
   }
 
   function patch(partial: Partial<CentralProject>) {
-    setDraft((current) => current ? { ...current, ...partial } : current);
+    setDraft((current) => {
+      if (!current) return current;
+      const next = { ...current, ...partial };
+      return {
+        ...next,
+        agencies: next.agencies.map((assignment) => {
+          const activities = next.activities.filter((activity) => assignment.activityIds.includes(activity.id));
+          const subActivityIds = new Set(activities.flatMap((activity) => (activity.subActivities ?? []).map((item) => item.id)));
+          return {
+            ...assignment,
+            activityIds: activities.map((activity) => activity.id),
+            subActivityIds: (assignment.subActivityIds ?? []).filter((id) => subActivityIds.has(id)),
+          };
+        }),
+      };
+    });
     setError("");
   }
 
@@ -216,8 +231,8 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
   }
 
   function patchActivity(id: string, partial: Partial<CentralActivity>) {
-    setDraft((current) => current ? { ...current, activities: current.activities.map((item) => item.id === id ? { ...item, ...partial } : item) } : current);
-    setError("");
+    if (!draft) return;
+    patch({ activities: draft.activities.map((item) => item.id === id ? { ...item, ...partial } : item) });
   }
 
   function focusNewRow(rowId: string) {
@@ -268,7 +283,8 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
   }
 
   function patchAgency(id: string, partial: Partial<CentralAgencyAssignment>) {
-    setDraft((current) => current ? { ...current, agencies: current.agencies.map((item) => item.id === id ? { ...item, ...partial } : item) } : current);
+    if (!draft) return;
+    patch({ agencies: draft.agencies.map((item) => item.id === id ? { ...item, ...partial } : item) });
   }
 
   function patchKpi(id: string, partial: Partial<CentralKpi>) {
@@ -627,6 +643,8 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
           {draft.agencies.map((assignment) => {
             const agency = agencyById(assignment.agencyId);
             const type = agencyType[assignment.id] ?? agency?.type ?? "";
+            const subActivities = draft.activities.filter((activity) => assignment.activityIds.includes(activity.id))
+              .flatMap((activity) => (activity.subActivities ?? []).map((item) => ({ id: item.id, name: `${activity.name || "Untitled activity"}: ${item.name || "Untitled sub-activity"}` })));
             return (
               <article key={assignment.id} className="agency-card">
                 <header className="proposal-actions"><strong>Agency</strong><button className="remove-icon-btn" type="button" aria-label="Remove agency" onClick={() => patch({ agencies: draft.agencies.filter((item) => item.id !== assignment.id) })}><TrashIcon /></button></header>
@@ -667,6 +685,16 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                   selectedIds={assignment.activityIds}
                   onChange={(activityIds) => patchAgency(assignment.id, { activityIds })}
                 />
+                {subActivities.length ? (
+                  <ChipMultiSelect
+                    label="Tagged sub-activities"
+                    placeholder="Select sub-activities"
+                    emptyText="No sub-activities added"
+                    options={subActivities}
+                    selectedIds={assignment.subActivityIds ?? []}
+                    onChange={(subActivityIds) => patchAgency(assignment.id, { subActivityIds })}
+                  />
+                ) : null}
               </article>
             );
           })}
