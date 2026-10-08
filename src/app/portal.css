@@ -804,6 +804,23 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 .kdash-project .panel > header { margin-bottom: 14px; }
 .kdash-project .kdash-pair span { white-space: normal; }
 .kdash-kpi { width: 100%; padding: 0; border: 0; background: transparent; color: #00389a; font-weight: 800; text-align: left; cursor: pointer; }
+.kdash-project .kdash-kpi-table table { min-width: 1180px; }
+.kdash-project .kdash-kpi-table th:nth-child(1),
+.kdash-project .kdash-kpi-table td:nth-child(1) { width: 18%; }
+.kdash-project .kdash-kpi-table th:nth-child(2),
+.kdash-project .kdash-kpi-table td:nth-child(2) { width: 12%; }
+.kdash-project .kdash-kpi-table th:nth-child(3),
+.kdash-project .kdash-kpi-table td:nth-child(3) { width: 12%; }
+.kdash-project .kdash-kpi-table th:nth-child(4),
+.kdash-project .kdash-kpi-table td:nth-child(4) { width: 16%; }
+.kdash-project .kdash-kpi-table th:nth-child(5),
+.kdash-project .kdash-kpi-table td:nth-child(5) { width: 14%; }
+.kdash-project .kdash-kpi-table th:nth-child(6),
+.kdash-project .kdash-kpi-table td:nth-child(6) { width: 14%; white-space: normal; }
+.kdash-project .kdash-kpi-table th:nth-child(7),
+.kdash-project .kdash-kpi-table td:nth-child(7) { width: 8%; }
+.kdash-project .kdash-kpi-table th:nth-child(8),
+.kdash-project .kdash-kpi-table td:nth-child(8) { width: 6%; }
 .kdash-detail { margin-top: 12px; padding: 18px 20px; border: 1px solid #eef2f6; border-radius: 14px; background: #f8fafc; }
 .kdash-detail dl, dl.kdash-detail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 24px; margin: 8px 0 0; }
 dl.kdash-detail { margin: 0; }
