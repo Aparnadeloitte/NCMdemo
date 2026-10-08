@@ -16,7 +16,7 @@ export function CentralPreview({ project }: { project: CentralProject }) {
             <tr><th>Start date</th><td>{project.start}</td></tr>
             <tr><th>End date</th><td>{project.end}</td></tr>
             <tr><th>Funding source</th><td>{project.fundingSource}</td></tr>
-            <tr><th>Sanctioned amount</th><td>{project.sanctioned}</td></tr>
+            <tr><th>Sanctioned amount (₹ in lakhs)</th><td>{project.sanctioned}</td></tr>
             <tr><th>Financial year</th><td>{project.financialYear}</td></tr>
             <tr><th>Fund allocation / release details</th><td>{project.releaseDetails}</td></tr>
             <tr><th>Supporting document</th><td>{project.releaseDocument || "Not attached"}</td></tr>

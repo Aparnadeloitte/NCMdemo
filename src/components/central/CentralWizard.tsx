@@ -447,7 +447,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
           <h2 className="proposal-section-heading">Funding details</h2>
           <div className="form-grid">
             <label className="field"><span>Funding source</span><input value={draft.fundingSource} placeholder="NCM 2.0 central share" onChange={(event) => patch({ fundingSource: event.target.value })} /></label>
-            <label className="field"><span>Sanctioned amount</span><input value={draft.sanctioned} onChange={(event) => patch({ sanctioned: event.target.value })} /></label>
+            <label className="field"><span>Sanctioned amount (₹ in lakhs)</span><input value={draft.sanctioned} placeholder="e.g. 150" onChange={(event) => patch({ sanctioned: event.target.value })} /></label>
             <label className="field"><span>Financial year</span><select value={draft.financialYear} onChange={(event) => patch({ financialYear: event.target.value })}>{financialYears.map((item) => <option key={item}>{item}</option>)}</select></label>
             <label className="field span-2"><span>Fund allocation / release details</span><textarea rows={2} value={draft.releaseDetails} onChange={(event) => patch({ releaseDetails: event.target.value })} /></label>
             <label className="field span-2"><span>Supporting document (optional)</span>
