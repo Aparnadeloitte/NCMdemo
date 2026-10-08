@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { KpiSiteMap, type KpiPin } from "@/components/kpi-dashboard/KpiSiteMap";
+import { DashboardProjectMap } from "@/components/kpi-dashboard/DashboardProjectMap";
 import { ProjectRecords, ProjectView } from "@/components/kpi-dashboard/KpiProjectView";
 import { FinancialTimeline } from "@/components/kpi-dashboard/FinancialTimeline";
 import { DataTable, Pagination } from "@/components/ui/DataTable";
@@ -320,8 +321,7 @@ export function KpiDashboardScreen() {
           </div>
         </header>
         <div className="kdash-split">
-          <KpiSiteMap pins={pins} selectedId={selectedPin} onSelect={setSelectedPin} />
-          <LocationBrief pin={selected} onOpenProject={openProject} />
+          <DashboardProjectMap pins={pins} selectedId={selectedPin} onSelect={setSelectedPin} />
         </div>
       </section>
 

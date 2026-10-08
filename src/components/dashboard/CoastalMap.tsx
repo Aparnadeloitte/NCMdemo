@@ -48,6 +48,7 @@ const PICHAVARAM: [number, number] = [11.43, 79.79];
 
 export type MapProject = {
   id: string;
+  siteId?: string;
   title: string;
   code: string;
   state: string;
@@ -63,11 +64,13 @@ export type MapProject = {
   longitude: number;
 };
 
-export function CoastalMap({ stateName = "", query = "", project = undefined, counts = {} }: { stateName?: string; query?: string; project?: MapProject | null; counts?: Record<string, string> }) {
+export function CoastalMap({ stateName = "", query = "", project = undefined, counts = {}, projectSites, onProjectSelect, onProjectClose }: { stateName?: string; query?: string; project?: MapProject | null; counts?: Record<string, string>; projectSites?: MapProject[]; onProjectSelect?: (project: MapProject) => void; onProjectClose?: () => void }) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const groups = useRef<Partial<Record<LayerId, LayerGroup>>>({});
   const siteMarkers = useRef<Marker[]>([]);
+  const onProjectSelectRef = useRef(onProjectSelect);
+  onProjectSelectRef.current = onProjectSelect;
   const [ready, setReady] = useState(false);
   const [layersOpen, setLayersOpen] = useState(true);
   const [active, setActive] = useState<Record<LayerId, boolean>>(() =>
@@ -88,7 +91,8 @@ export function CoastalMap({ stateName = "", query = "", project = undefined, co
         maxZoom: 12,
       }).setView([18.6, 80.2], 5);
       mapRef.current = map;
-      L.control.zoom({ position: "topright" }).addTo(map);
+      L.control.zoom({ position: projectSites !== undefined ? "bottomright" : "topright" }).addTo(map);
+      if (projectSites !== undefined && window.matchMedia("(max-width: 1100px)").matches) setLayersOpen(false);
       L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         { maxZoom: 18 },
@@ -113,7 +117,7 @@ export function CoastalMap({ stateName = "", query = "", project = undefined, co
       L.circle([9.6, 79.15], { radius: 50000, color: "#2f9d6a", weight: 1, fillColor: "#49c48a", fillOpacity: 0.35 }).addTo(seagrass);
 
       const siteGroup = L.layerGroup().addTo(map);
-      siteMarkers.current = sites.map((site) => {
+      siteMarkers.current = projectSites ? [] : sites.map((site) => {
         const icon = L.divIcon({
           className: "map-pin",
           html: `<span style="background:${site.color}">${site.count}</span>`,
@@ -205,6 +209,13 @@ export function CoastalMap({ stateName = "", query = "", project = undefined, co
       if (show) marker.addTo(map);
       else marker.remove();
     });
+    if (projectSites !== undefined) {
+      if (project) {
+        map.stop();
+        map.setView([project.latitude, project.longitude], 8, { animate: false });
+      }
+      return;
+    }
     if (project) map.flyTo([project.latitude, project.longitude], 8, { duration: 0.7 });
     else if (state || needle) {
       const hit = sites.find((site) => {
@@ -213,7 +224,43 @@ export function CoastalMap({ stateName = "", query = "", project = undefined, co
       });
       if (hit) map.flyTo([hit.lat, hit.lng], 7, { duration: 0.7 });
     } else map.flyTo([18.6, 80.2], 5, { duration: 0.7 });
-  }, [ready, stateName, query, project]);
+  }, [ready, stateName, query, project, projectSites]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const group = groups.current.sites;
+    if (!ready || !map || !group || projectSites === undefined) return;
+    let cancelled = false;
+    void import("leaflet").then((L) => {
+      if (cancelled || mapRef.current !== map) return;
+      group.clearLayers();
+      const clusters = new Map<string, MapProject[]>();
+      projectSites.forEach((site) => {
+        const key = JSON.stringify([site.state, site.district, site.location]);
+        clusters.set(key, [...(clusters.get(key) ?? []), site]);
+      });
+      clusters.forEach((members) => {
+        const site = members.find((item) => item.siteId === project?.siteId) ?? members[0];
+        const selected = members.some((item) => item.siteId === project?.siteId);
+        const count = document.createElement("span");
+        count.style.background = selected ? "#f0a202" : "#2f6fed";
+        count.textContent = String(members.length);
+        const marker = L.marker([site.latitude, site.longitude], {
+          icon: L.divIcon({ className: "map-pin dashboard-project-marker", html: count, iconSize: [36, 36], iconAnchor: [18, 18] }),
+          title: `${members.length} project${members.length === 1 ? "" : "s"} at ${site.location}`,
+        }).addTo(group);
+        const label = document.createElement("span");
+        label.textContent = `${site.title} · ${site.location}, ${site.state}`;
+        marker.bindTooltip(label, { direction: "top" });
+        marker.on("click", () => onProjectSelectRef.current?.(site));
+      });
+      if (!project && projectSites.length) {
+        map.stop();
+        map.fitBounds(L.latLngBounds(projectSites.map((site) => [site.latitude, site.longitude])), { paddingTopLeft: [window.innerWidth > 1100 ? 260 : 32, 32], paddingBottomRight: [32, 32], maxZoom: 7, animate: false });
+      }
+    });
+    return () => { cancelled = true; };
+  }, [ready, projectSites, project]);
 
   useEffect(() => {
     if (!ready) return;
@@ -237,6 +284,11 @@ export function CoastalMap({ stateName = "", query = "", project = undefined, co
 
   function focusProject() {
     const target: [number, number] = project ? [project.latitude, project.longitude] : PICHAVARAM;
+    if (projectSites !== undefined) {
+      mapRef.current?.stop();
+      mapRef.current?.setView(target, 9, { animate: false });
+      return;
+    }
     mapRef.current?.flyTo(target, 9, { duration: 0.8 });
   }
 
@@ -254,9 +306,10 @@ export function CoastalMap({ stateName = "", query = "", project = undefined, co
     status: "Ongoing",
     image: "/images/coast.svg",
   } : project;
+  const nearbyProjects = project && projectSites ? projectSites.filter((site) => site.state === project.state && site.district === project.district && site.location === project.location) : [];
 
   return (
-    <div className="figma-map">
+    <div className={`figma-map${projectSites !== undefined ? " dashboard-project-map" : ""}`}>
       <div ref={host} className="figma-map-canvas" />
       <aside className={`map-layers${layersOpen ? "" : " is-collapsed"}`} aria-label="Map layers">
         <header>
@@ -285,12 +338,17 @@ export function CoastalMap({ stateName = "", query = "", project = undefined, co
           </>
         ) : null}
       </aside>
-      <article className="project-card">
+      {projectSites === undefined || card ? <article className="project-card" aria-label="Project / Intervention Details">
         {card ? (
           <>
             <div className="project-body">
               <h3>Project / Intervention Details</h3>
+              {onProjectClose ? <button type="button" className="dashboard-map-close" aria-label="Close project details" title="Close project details" onClick={onProjectClose}>×</button> : null}
               <img className="project-banner" src="/images/activity-tree.jpg" alt="" />
+              {nearbyProjects.length > 1 ? <label className="dashboard-map-project-choice"><span>Projects at this site</span><select aria-label="Project at this map site" value={project?.siteId ?? ""} onChange={(event) => {
+                const selected = nearbyProjects.find((site) => site.siteId === event.target.value);
+                if (selected) onProjectSelectRef.current?.(selected);
+              }}>{nearbyProjects.map((site) => <option key={site.siteId} value={site.siteId}>{site.title} · {site.code}</option>)}</select></label> : null}
               <div className="project-heading">
                 <div>
                   <strong>{card.title}</strong>
@@ -319,7 +377,7 @@ export function CoastalMap({ stateName = "", query = "", project = undefined, co
             <p className="project-id">No project matches these filters.</p>
           </div>
         )}
-      </article>
+      </article> : null}
     </div>
   );
 }
