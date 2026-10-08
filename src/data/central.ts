@@ -273,6 +273,7 @@ export function emptyCentralProject(createdBy: string): CentralProject {
     kpis: [],
     updated: new Date().toISOString(),
     published: false,
+    feedback: [],
   };
 }
 

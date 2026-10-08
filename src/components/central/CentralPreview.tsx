@@ -1,10 +1,10 @@
 import { agencyById, locationLabel, locationsForAssignment } from "@/data/central";
 import type { CentralProject } from "@/types/domain";
 
-export function CentralPreview({ project }: { project: CentralProject }) {
+export function CentralPreview({ project, hideIntro }: { project: CentralProject; hideIntro?: boolean }) {
   return (
     <section className="panel proposal-card">
-      <header><h2>Review & submit</h2><p>Confirm every section below, then send this project for admin review.</p></header>
+      {hideIntro ? null : <header><h2>Review & submit</h2><p>Confirm every section below, then send this project for admin review.</p></header>}
 
       <section className="location-card review-kv-card">
         <h3 className="review-subhead">Project & funding</h3>

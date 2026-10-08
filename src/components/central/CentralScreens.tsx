@@ -6,7 +6,7 @@ import { CentralPreview } from "@/components/central/CentralPreview";
 import { CentralWizard } from "@/components/central/CentralWizard";
 import { agenciesForActivity, agencyById, locationLabel } from "@/data/central";
 import { getSession } from "@/lib/session";
-import { assignmentsForUser, getCentralProject, listAgencyCentralProjects, listApprovedCentralProjects, listOwnCentralProjects, listReviewCentralProjects, listSubmittedKpiReports, reportId, reportsForProject, reviewCentralProject, reviewKpiReport, upsertKpiReports } from "@/services/central-projects.service";
+import { addCentralProjectFeedback, assignmentsForUser, getCentralProject, listAgencyCentralProjects, listApprovedCentralProjects, listOwnCentralProjects, listReviewCentralProjects, listSubmittedKpiReports, reportId, reportsForProject, reviewCentralProject, reviewKpiReport, upsertKpiReports } from "@/services/central-projects.service";
 import type { CentralProject, KpiReport } from "@/types/domain";
 
 const statusLabel: Record<string, string> = { draft: "Draft", submitted: "Submitted", returned: "Returned", approved: "Approved", verified: "Verified" };
@@ -75,7 +75,64 @@ export function CentralProjectPage({ projectId }: { projectId: string }) {
   if (!project) return <p className="form-error">This project was not found.</p>;
   if (role === "Central user" && (project.status === "draft" || project.status === "returned")) return <CentralWizard initial={project} />;
   if (role === "State user" && project.status !== "approved" && project.status !== "verified") return <p className="form-error">This project is not approved yet.</p>;
-  return <div className="page campaign-page"><header className="page-head"><div><h1>{project.name}</h1><p><Badge status={project.status} /></p></div></header><CentralPreview project={project} /></div>;
+  return (
+    <div className="page campaign-page">
+      <header className="page-head"><div><h1>{project.name}</h1><p><Badge status={project.status} /></p></div></header>
+      <CentralPreview project={project} hideIntro={role === "State user"} />
+      {role === "Central user" ? <FeedbackList project={project} /> : null}
+      {role === "State user" ? <ProjectFeedback project={project} onSubmitted={setProject} /> : null}
+    </div>
+  );
+}
+
+function FeedbackList({ project }: { project: CentralProject }) {
+  if (!project.feedback?.length) return null;
+  const entries = project.feedback.filter((item, index, all) => index === 0 || item.note !== all[index - 1].note);
+  return (
+    <section className="panel proposal-card">
+      <header><h2>State feedback</h2><p>Comments left by state users viewing this approved project.</p></header>
+      <ul className="doc-summary">
+        {entries.map((item, index) => (
+          <li key={`${item.date}-${index}`}>{item.note}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function ProjectFeedback({ project, onSubmitted }: { project: CentralProject; onSubmitted: (next: CentralProject) => void }) {
+  const [note, setNote] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
+  async function send() {
+    if (pending) return;
+    setPending(true);
+    setError("");
+    try {
+      const session = getSession();
+      const identifier = session?.state || session?.name || "State user";
+      const next = addCentralProjectFeedback(project.id, identifier, note);
+      onSubmitted(next);
+      setNote("");
+      setSent(true);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to send feedback.");
+    } finally {
+      setPending(false);
+    }
+  }
+  return (
+    <section className="panel proposal-card">
+      <header><h2>Feedback</h2><p>Share any comments on this project. The central admin will be able to see it.</p></header>
+      <label className="field"><span>Your feedback</span><textarea rows={4} value={note} onChange={(event) => { setNote(event.target.value); setSent(false); }} placeholder="Enter your feedback for the central admin" /></label>
+      {error ? <p className="form-error" role="alert">{error}</p> : null}
+      {sent ? <p className="form-success" role="status">Feedback sent successfully.</p> : null}
+      <div className="form-actions">
+        <button className="btn-primary" type="button" disabled={pending || !note.trim()} onClick={() => void send()}>{pending ? "Sending…" : "Send feedback"}</button>
+      </div>
+    </section>
+  );
 }
 
 export function CentralReviewList() {
@@ -120,6 +177,7 @@ export function CentralReviewDetail({ projectId }: { projectId: string }) {
     <div className="page campaign-page central-review-detail">
       <header className="page-head"><div><h1>{project.name}</h1><p>Draft → Submitted → Admin Review → Approved / Returned for correction</p></div></header>
       <CentralPreview project={project} />
+      <FeedbackList project={project} />
       <section className="panel proposal-card">
         <p>Status: <Badge status={project.status} /></p>
         {project.status === "submitted" ? (

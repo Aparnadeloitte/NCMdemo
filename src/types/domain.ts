@@ -266,6 +266,7 @@ export type CentralProject = {
   kpis: CentralKpi[];
   updated: string;
   published: boolean;
+  feedback: { author: string; date: string; note: string }[];
 };
 
 export type KpiReportStatus = "draft" | "submitted" | "approved" | "returned";

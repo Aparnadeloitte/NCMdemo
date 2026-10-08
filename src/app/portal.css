@@ -72,6 +72,7 @@
 .review-subhead { margin: 22px 0 0; padding-top: 18px; border-top: 1px solid #eef2f6; font-size: 15px; color: var(--title); }
 .review-subhead:first-of-type { margin-top: 18px; padding-top: 0; border-top: 0; }
 .form-error { margin: 0; padding: 10px 14px; border: 1px solid #f3c6c2; border-radius: 10px; background: #fdf2f1; color: var(--danger); font-size: 13px; font-weight: 600; line-height: 1.4; }
+.form-success { margin: 0; padding: 10px 14px; border: 1px solid #b7e4c7; border-radius: 10px; background: #edfbf2; color: var(--ok); font-size: 13px; font-weight: 600; line-height: 1.4; }
 .field-hint { margin: 6px 0 0; color: #8b96a3; font-size: 12px; }
 .span-full, .check-field { grid-column: 1 / -1; }
 .check-field label { display: flex; gap: 10px; align-items: flex-start; font-weight: 600; }
@@ -610,7 +611,7 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 .proposal-table th { background: #f8f9fb; color: #121212; font-size: 13px; font-weight: 600; }
 .proposal-table input, .proposal-table select { width: 100%; height: 34px; border: 1px solid #e4e7ec; border-radius: 6px; padding: 0 8px; background: #fff; }
 .proposal-table input:focus, .proposal-table select:focus, .proposal-table textarea:focus { outline: none; border-color: #8eadd8; box-shadow: 0 0 0 3px rgba(15,61,145,.12); }
-.proposal-table textarea { width: 100%; min-height: 44px; border: 1px solid #e4e7ec; border-radius: 6px; padding: 8px; background: #fff; font: inherit; resize: vertical; }
+.proposal-table textarea { width: 100%; height: 34px; min-height: 34px; max-height: 120px; border: 1px solid #e4e7ec; border-radius: 6px; padding: 7px 8px; background: #fff; font: inherit; resize: vertical; }
 .activity-table-wrap { border: 1px solid #e6edf5; border-radius: 12px; overflow: auto; }
 .activity-table-wrap .proposal-table { min-width: 860px; }
 .activity-table-wrap .proposal-table th, .activity-table-wrap .proposal-table td { border-bottom-color: #eef1f5; }
