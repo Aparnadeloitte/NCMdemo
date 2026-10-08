@@ -17,3 +17,11 @@ export function AttachmentIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+export function BackIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" aria-hidden="true" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12.5 4.5 6 10l6.5 5.5" />
+    </svg>
+  );
+}

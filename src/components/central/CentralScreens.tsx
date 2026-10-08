@@ -6,6 +6,7 @@ import { CentralPreview } from "@/components/central/CentralPreview";
 import { CentralWizard } from "@/components/central/CentralWizard";
 import { agenciesForActivity, agencyById, fileMatchesKpiTypes, kpiEvidenceRequired, kpiEvidenceTypes, kpiFileAccept, kpiTargetBounds, kpiTargetText, locationLabel } from "@/data/central";
 import { getSession } from "@/lib/session";
+import { BackIcon } from "@/components/ui/icons";
 import { addCentralProjectFeedback, assignmentsForUser, getCentralProject, getReportFileUrl, listAgencyCentralProjects, listApprovedCentralProjects, listOwnCentralProjects, listReviewCentralProjects, listSubmittedKpiReports, reportId, reportsForProject, reviewCentralProject, reviewKpiReport, saveReportFile, upsertKpiReports } from "@/services/central-projects.service";
 import type { CentralProject, KpiReport } from "@/types/domain";
 
@@ -77,6 +78,7 @@ export function CentralProjectPage({ projectId }: { projectId: string }) {
   if (role === "State user" && project.status !== "approved" && project.status !== "verified") return <p className="form-error">This project is not approved yet.</p>;
   return (
     <div className="page campaign-page">
+      <p className="crumb"><Link href="/central-projects"><BackIcon /> My Projects</Link></p>
       <header className="page-head"><div><h1>{project.name}</h1><p><Badge status={project.status} /></p></div></header>
       <CentralPreview project={project} hideIntro={role === "State user"} />
       {role === "Central user" ? <FeedbackList project={project} /> : null}
@@ -175,6 +177,7 @@ export function CentralReviewDetail({ projectId }: { projectId: string }) {
   }
   return (
     <div className="page campaign-page central-review-detail">
+      <p className="crumb"><Link href="/central-review"><BackIcon /> Project Review</Link></p>
       <header className="page-head"><div><h1>{project.name}</h1><p>Draft → Submitted → Admin Review → Approved / Returned for correction</p></div></header>
       <CentralPreview project={project} />
       <FeedbackList project={project} />
@@ -370,7 +373,7 @@ export function AgencyWorkspace({ projectId }: { projectId: string }) {
   }
   return (
     <div className="page campaign-page">
-      <header className="page-head"><div><p className="crumb"><Link href="/my-projects">My Projects</Link></p><h1>{project.name}</h1><p>Project configuration is read-only. Report achievement against each assigned KPI.</p></div></header>
+      <header className="page-head"><div><p className="crumb"><Link href="/my-projects"><BackIcon /> My Projects</Link></p><h1>{project.name}</h1><p>Project configuration is read-only. Report achievement against each assigned KPI.</p></div></header>
       <CentralPreview project={project} />
       <section className="panel proposal-card">
         <header><div><h2>KPI reporting</h2><p>Enter the achievement, remarks and evidence for each assigned KPI, then submit for NCM review.</p></div></header>
@@ -500,6 +503,7 @@ export function KpiReviewDetail({ reportId: id }: { reportId: string }) {
   }
   return (
     <div className="page campaign-page">
+      <p className="crumb"><Link href="/kpi-review"><BackIcon /> KPI Review</Link></p>
       <header className="page-head"><div><h1>KPI verification</h1><p>Agency submission → NCM review and AI-assisted checks → Approve or return</p></div></header>
       <section className="panel proposal-card">
         <dl className="review-facts">

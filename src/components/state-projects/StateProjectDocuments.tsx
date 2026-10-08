@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { WorkflowTracker } from "@/components/state-projects/WorkflowTracker";
 import { ErrorState, LoadingState } from "@/components/ui/Feedback";
+import { BackIcon } from "@/components/ui/icons";
 import { getSession } from "@/lib/session";
 import { getStateProposal, saveStateDocuments, submitStateDocuments } from "@/services/state-projects.service";
 import type { StateProjectDocuments as Documents, StateProjectProposal } from "@/types/domain";
@@ -94,7 +95,7 @@ export function StateProjectDocuments({ projectId }: { projectId: string }) {
     <div className="page campaign-page">
       <header className="page-head">
         <div>
-          <p className="crumb"><Link href="/state-projects">State Projects</Link></p>
+          <p className="crumb"><Link href="/state-projects"><BackIcon /> State Projects</Link></p>
           <h1>Documents & Submit</h1>
           <p>{current.title} · {current.id} · {current.state}</p>
         </div>

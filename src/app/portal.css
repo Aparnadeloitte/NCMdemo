@@ -691,7 +691,8 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 .review-progress .workflow-step.rejected strong { color: #b42318; }
 .cell-sub { display: block; color: #66788a; font-size: 12px; font-weight: 500; }
 .crumb { margin: 0 0 4px; font-size: 13px; }
-.crumb a { color: #00389a; font-weight: 700; text-decoration: none; }
+.crumb a { display: inline-flex; align-items: center; gap: 6px; color: #00389a; font-weight: 700; text-decoration: none; }
+.crumb a svg { flex: none; }
 .modal.modal-wide { width: min(880px, 100%); max-height: min(86vh, 900px); overflow: auto; }
 .review-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 14px 0; }
 .review-facts div { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 6px; border-bottom: 1px solid #eef2f6; }

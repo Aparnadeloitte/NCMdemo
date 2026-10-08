@@ -731,12 +731,12 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
               <thead>
                 <tr>
                   <th>Source</th>
-                  <th>KPI</th>
-                  <th>Unit of measurement</th>
-                  <th>Baseline</th>
-                  <th>Target</th>
-                  <th>Reporting frequency</th>
-                  <th>Applicable activity</th>
+                  <th>KPI<span className="req"> *</span></th>
+                  <th>Unit of measurement<span className="req"> *</span></th>
+                  <th>Baseline<span className="req"> *</span></th>
+                  <th>Target<span className="req"> *</span></th>
+                  <th>Reporting frequency<span className="req"> *</span></th>
+                  <th>Applicable activity<span className="req"> *</span></th>
                   <th>Evidence required</th>
                   <th><span className="sr-only">Remove</span></th>
                 </tr>

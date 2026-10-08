@@ -5,7 +5,7 @@ import Link from "next/link";
 import { KpiSiteMap } from "@/components/kpi-dashboard/KpiSiteMap";
 import { DataTable, Pagination } from "@/components/ui/DataTable";
 import { EmptyState, StatusBadge } from "@/components/ui/Feedback";
-import { AttachmentIcon } from "@/components/ui/icons";
+import { AttachmentIcon, BackIcon } from "@/components/ui/icons";
 import {
   averagePercent,
   componentShort,
@@ -91,7 +91,7 @@ export function KpiProjectView({ projectId }: { projectId: string }) {
 
   return (
     <div className="page">
-      <p className="crumb"><Link href="/kpi-dashboard">KPI Dashboard</Link></p>
+      <p className="crumb"><Link href="/kpi-dashboard"><BackIcon /> KPI Dashboard</Link></p>
       <ProjectView key={project.id} project={project} />
     </div>
   );
