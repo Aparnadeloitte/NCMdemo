@@ -1,7 +1,7 @@
 import { agencyById } from "@/data/central";
 import { districtCentroid, districtsByState, stateCentroids, states } from "@/data/options";
 import { seedProjects } from "@/data/projects";
-import type { DashKpi, DashLocation, DashProject } from "@/data/kpi-dashboard";
+import type { DashFinancialSeries, DashKpi, DashLocation, DashProject } from "@/data/kpi-dashboard";
 import { centralAsPortalProject, listDashboardKpiReports, listStoredCentralProjects } from "@/services/central-projects.service";
 import { listApprovedStateProjects } from "@/services/state-projects.service";
 import { listStoredProjects } from "@/services/projects.service";
@@ -13,11 +13,12 @@ function numberValue(value: string | number | undefined) {
   return match ? Number(match[0]) : 0;
 }
 
-function costInCrore(value: string | undefined) {
+function costInCrore(value: string | undefined, inLakhs = false) {
   const amount = numberValue(value);
   const normalized = value?.toLowerCase() ?? "";
   if (normalized.includes("lakh")) return amount / 100;
   if (normalized.includes("crore") || normalized.includes("cr")) return amount;
+  if (inLakhs) return amount / 100;
   return amount > 1000 ? amount / 10000000 : amount;
 }
 
@@ -108,6 +109,7 @@ function centralKpis(project: CentralProject, locations: DashLocation[], reports
         activity: activity?.name ?? "Project activity",
         locationId,
         agency: agencyNames.join(", "),
+        agencyNames,
         evidence: submitted.flatMap((report) => [...report.documents, ...report.photos]).join(", ") || kpi.evidence,
         remarks: submitted.map((report) => report.remarks).filter(Boolean).join("; "),
         ai: "",
@@ -132,12 +134,49 @@ function stateKpis(project: StateProjectProposal, locations: DashLocation[]): Da
     activity: "Project KPI",
     locationId: location.id,
     agency: project.agency,
+    agencyNames: [project.agency].filter(Boolean),
     evidence: kpi.evidence,
     remarks: "",
     ai: "",
     review: "",
     history: [],
   })));
+}
+
+function financialSeries(project: CentralProject, locations: DashLocation[], reports: KpiReport[]): DashFinancialSeries[] {
+  return project.kpis.flatMap((kpi) => {
+    if (!/utili[sz]ation|expenditure|expenses|funds? spent|financial progress/i.test(kpi.name)) return [];
+    const unit = kpi.unit.trim().toLowerCase();
+    const percentage = unit.includes("%") || /percent/.test(unit);
+    const multiplier = /lakh|lac/.test(unit) ? 1 : /crore|\bcr\b/.test(unit) ? 100 : /rupee|inr|₹/.test(unit) ? 1 / 100000 : null;
+    if (!percentage && multiplier === null) return [];
+    return reports.filter((report) => report.projectId === project.id && report.kpiId === kpi.id && report.status !== "draft").flatMap((report) => {
+      const entries = report.history.length ? report.history : [{ at: report.updated, achievement: report.achievement, status: report.status }];
+      const byDate = new Map<string, number>();
+      entries.filter((entry) => entry.status === "submitted" || entry.status === "approved")
+        .sort((left, right) => left.at.localeCompare(right.at))
+        .forEach((entry) => {
+          const date = new Date(entry.at);
+          const amount = entry.achievement.replaceAll(",", "").trim().match(/^(?:₹\s*)?(-?(?:\d+(?:\.\d*)?|\.\d+))(?:\s*(%|lakhs?|lacs?|crores?|cr|inr|rupees?))?$/i);
+          if (Number.isNaN(date.getTime()) || !amount) return;
+          const reportedUnit = amount[2]?.toLowerCase() ?? "";
+          if (percentage && ((reportedUnit && reportedUnit !== "%") || entry.achievement.includes("₹"))) return;
+          if (!percentage && reportedUnit === "%") return;
+          const reportedMultiplier = /lakh|lac/.test(reportedUnit) ? 1 : /crore|\bcr\b/.test(reportedUnit) ? 100 : /rupee|inr/.test(reportedUnit) ? 1 / 100000 : multiplier;
+          const value = Number(amount[1]) * (percentage ? 1 : reportedMultiplier ?? 1);
+          if (!Number.isFinite(value) || value < 0) return;
+          byDate.set(date.toISOString(), value);
+        });
+      if (!byDate.size) return [];
+      return [{
+        id: report.id,
+        label: `${kpi.name} · ${locations.find((location) => location.id === report.locationId)?.name ?? report.locationId} · ${agencyById(report.agencyId)?.name ?? "Implementing agency"}`,
+        locationId: report.locationId,
+        unit: percentage ? "%" as const : "lakhs" as const,
+        points: [...byDate].map(([date, value]) => ({ date, value })).sort((left, right) => left.date.localeCompare(right.date)),
+      }];
+    });
+  });
 }
 
 function toDashboardProject(
@@ -176,8 +215,12 @@ function toDashboardProject(
     name: central?.name || state?.title || source.title,
     component: central?.component || state?.component || source.program,
     status: source.status,
-    approvedCost: costInCrore(central?.sanctioned || central?.totalCost || state?.budget || source.totalCost),
+    approvedCost: central?.sanctioned.trim()
+      ? costInCrore(central.sanctioned, true)
+      : costInCrore(central?.totalCost || state?.budget || source.totalCost),
     utilised: null,
+    financialSeries: central ? financialSeries(central, locations, reports) : [],
+    financialPeriod: { start: central?.start || source.start, end: central?.end || source.end },
     locations,
     activities,
     agencies,

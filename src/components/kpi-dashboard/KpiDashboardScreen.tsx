@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { KpiSiteMap, type KpiPin } from "@/components/kpi-dashboard/KpiSiteMap";
-import { ProjectView } from "@/components/kpi-dashboard/KpiProjectView";
+import { ProjectRecords, ProjectView } from "@/components/kpi-dashboard/KpiProjectView";
+import { FinancialTimeline } from "@/components/kpi-dashboard/FinancialTimeline";
 import { DataTable, Pagination } from "@/components/ui/DataTable";
 import { EmptyState, StatusBadge } from "@/components/ui/Feedback";
 import {
   averagePercent,
   componentShort,
-  formatCrore,
+  formatLakhs,
   formatMeasure,
   kpiPercent,
   locationById,
@@ -54,6 +55,12 @@ function kpisFor(projects: DashProject[], filters?: Partial<DashboardFilters> & 
 
 function unique(values: string[]) {
   return [...new Set(values)].sort((a, b) => a.localeCompare(b));
+}
+
+function financialNote(project: DashProject) {
+  if (project.utilised !== null && project.approvedCost > 0) return `${Math.round((project.utilised / project.approvedCost) * 100)}% used`;
+  const scopes = project.financialSeries?.length ?? 0;
+  return scopes ? `${scopes} financial reporting scope${scopes === 1 ? "" : "s"}` : "utilisation not reported";
 }
 
 function locationMatchesFilters(project: DashProject, location: DashProject["locations"][number], filters: DashboardFilters) {
@@ -110,8 +117,6 @@ export function KpiDashboardScreen() {
   const [filters, setFilters] = useState<DashboardFilters>(emptyDashboardFilters);
   const [page, setPage] = useState(1);
   const [selectedPin, setSelectedPin] = useState("");
-  const [drillProject, setDrillProject] = useState("");
-  const [viewId, setViewId] = useState("");
 
   useEffect(() => {
     const session = getSession();
@@ -175,12 +180,13 @@ export function KpiDashboardScreen() {
     const cost = availableProjects.reduce((sum, project) => sum + project.approvedCost, 0);
     const projectsWithUtilisation = availableProjects.filter((project) => project.utilised !== null);
     const used = projectsWithUtilisation.reduce((sum, project) => sum + (project.utilised ?? 0), 0);
+    const financiallyReported = availableProjects.filter((project) => project.financialSeries?.length).length;
     const reportedKpis = portfolioKpis.filter((kpi) => kpi.reported !== false);
     const pending = reportedKpis.filter((kpi) => kpi.status === "Pending").length;
     const belowTarget = availableProjects.filter((project) => project.kpis.some((kpi) => kpi.reported !== false && kpi.target > 0 && kpi.achievement < kpi.target)).length;
     return [
       { label: "Projects", value: String(availableProjects.length), note: lockedState || "All coastal states" },
-      { label: "Approved funding", value: formatCrore(cost), note: projectsWithUtilisation.length ? `${Math.round((used / cost) * 100)}% utilisation reported` : "Actual utilisation not reported" },
+      { label: "Approved funding", value: formatLakhs(cost), note: projectsWithUtilisation.length && cost > 0 ? `${Math.round((used / cost) * 100)}% utilisation reported` : financiallyReported ? `${financiallyReported} projects with financial reports` : "Actual utilisation not reported" },
       { label: "KPI achievement", value: reportedKpis.length ? `${averagePercent(reportedKpis)}%` : "—", note: `${reportedKpis.length} reported KPI results` },
       { label: "Pending verification", value: String(pending), note: "KPI submissions awaiting review" },
       { label: "Projects below target", value: String(belowTarget), note: "Projects with a reported KPI below target" },
@@ -191,24 +197,18 @@ export function KpiDashboardScreen() {
     const reported = kpisFor([project], activeFilters).filter((kpi) => kpi.reported !== false);
     return { id: project.id, label: project.name, value: reported.length ? averagePercent(reported) : null, note: reported.length ? `${reported.length} reported KPI results` : "No KPI results submitted" };
   }), [scoped, activeFilters]);
-  const byComponent = useMemo(() => {
-    const groups = new Map<string, ReturnType<typeof kpisFor>>();
-    unique(scoped.map((project) => project.component)).forEach((component) => {
-      const rows = kpisFor(scoped, { ...activeFilters, component }).filter((kpi) => kpi.reported !== false);
-      if (!rows.length) return;
-      const label = componentShort(component);
-      groups.set(label, [...(groups.get(label) ?? []), ...rows]);
-    });
-    return [...groups.entries()].map(([label, rows]) => ({ label, value: averagePercent(rows) }));
-  }, [scoped, activeFilters]);
   const finance = useMemo(() => scoped.map((project) => ({
     id: project.id,
     label: project.name,
     approved: project.approvedCost,
     used: project.utilised,
-  })), [scoped]);
+    period: project.financialPeriod,
+    series: (project.financialSeries ?? []).filter((series) => {
+      const location = locationById(project, series.locationId);
+      return location && locationMatchesFilters(project, location, activeFilters);
+    }),
+  })), [scoped, activeFilters]);
   const trend = quarterlySubmissions(scoped.map((project) => ({ ...project, kpis: kpisFor([project], activeFilters) })));
-  const drill = scoped.find((project) => project.id === drillProject) ?? scoped[0];
   const blueFlagLocations = scoped.flatMap((project) => project.component.toLowerCase().includes("beach")
     ? project.locations.filter((location) => locationMatchesFilters(project, location, activeFilters))
       .map((location) => ({ project: project.name, location: location.name, state: location.state, district: location.district }))
@@ -216,9 +216,10 @@ export function KpiDashboardScreen() {
 
   const targetRows = useMemo(() => scoped.flatMap((project) => kpisFor([project], activeFilters).map((kpi) => ({ project, kpi }))), [scoped, activeFilters]);
   const pageRows = scoped.slice((page - 1) * 6, page * 6);
-  const viewProject = scoped.find((project) => project.id === viewId) ?? scoped[0];
+  const viewProject = scoped.find((project) => project.id === filters.projectId);
   function openProject(id: string) {
-    setViewId(id);
+    setFilters((current) => ({ ...current, projectId: id }));
+    setPage(1);
     window.requestAnimationFrame(() => document.getElementById("project-view")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
@@ -232,7 +233,7 @@ export function KpiDashboardScreen() {
           Component: componentShort(project.component),
           "Location(s)": project.locations.filter((location) => locationMatchesFilters(project, location, activeFilters)).map((location) => location.name).join(", "),
           Agency: project.agencies.join(", "),
-          Funding: `${formatCrore(project.approvedCost)} \u00b7 ${project.utilised === null ? "utilisation not reported" : `${Math.round((project.utilised / project.approvedCost) * 100)}% used`}`,
+          Funding: `${formatLakhs(project.approvedCost)} \u00b7 ${financialNote(project)}`,
           "KPI progress": reported.length ? `${averagePercent(reported)}%` : "No reports",
           Status: project.status,
         };
@@ -244,11 +245,21 @@ export function KpiDashboardScreen() {
         Achieved: kpi.reported === false ? "Not reported" : formatMeasure(kpi.achievement, kpi.unit),
         "Achievement %": kpi.reported === false ? "\u2014" : `${kpiPercent(kpi)}%`,
       })),
-      finance: finance.map((row) => ({
+      finance: finance.flatMap((row) => row.series.length ? row.series.flatMap((series) => series.points.map((point) => ({
         Project: row.label,
-        "Approved funding": formatCrore(row.approved),
-        Utilisation: row.used === null || row.approved <= 0 ? "Not reported" : `${Math.round((row.used / row.approved) * 100)}%`,
-      })),
+        "Approved funding (INR lakh)": (row.approved * 100).toLocaleString("en-IN", { maximumFractionDigits: 2 }),
+        "Reporting scope": series.label,
+        "Recorded on": point.date,
+        Unit: series.unit,
+        Utilisation: String(point.value),
+      }))) : [{
+        Project: row.label,
+        "Approved funding (INR lakh)": (row.approved * 100).toLocaleString("en-IN", { maximumFractionDigits: 2 }),
+        "Reporting scope": "",
+        "Recorded on": "",
+        Unit: "",
+        Utilisation: "Not reported",
+      }]),
       blueFlag: blueFlagLocations.map((row) => ({ Project: row.project, Location: row.location, District: row.district, "State / UT": row.state })),
     });
   }
@@ -265,10 +276,9 @@ export function KpiDashboardScreen() {
     <div className="page">
       <header className="page-head dash-head">
         <div>
-          <h1>KPI Dashboard</h1>
-          <p>Blue Flag beaches, mangrove and coral conservation, and coastal wetland restoration. {lockedState ? `Showing ${lockedState}.` : "Showing every coastal state and UT."}</p>
+          <h1>Dashboard</h1>
+          <p>Monitoring sites marked along the mainland and island coastline.</p>
         </div>
-        <button type="button" className="btn-ghost" onClick={handleDownloadDashboard}>Download Dashboard</button>
       </header>
 
       <section className="kpi-grid dash-kpis kdash-cards" aria-label="KPI summary">
@@ -317,8 +327,7 @@ export function KpiDashboardScreen() {
 
       <section className="kdash-grid">
         <ChartPanel title="Project-wise KPI Achievement" description="Average achieved-to-target percentage across reported KPI rows; each KPI is normalized before averaging." rows={byProject} />
-        <ComponentDonut rows={byComponent} />
-        <section className="panel">
+        <section className="panel kdash-wide">
           <header><div><h2>Target vs Achieved by Project</h2><p>Each KPI is shown in its own unit; project achievement is the average of reported KPI percentages.</p></div></header>
           {targetRows.length ? (
             <div className="table-wrap">
@@ -339,52 +348,28 @@ export function KpiDashboardScreen() {
             </div>
           ) : <EmptyState title="No project KPIs" message="Project KPI targets will appear here when available." />}
         </section>
-        <section className="panel">
-          <header><div><h2>Financial Utilisation by Project</h2><p>Approved funding is shown per project. Utilisation appears only when it has been reported.</p></div></header>
-          <div className="kdash-bars kdash-finance">
-            {finance.map((row) => {
-              const max = Math.max(...finance.map((item) => item.approved), 1);
-              const pct = row.used === null || row.approved <= 0 ? null : Math.round((row.used / row.approved) * 100);
-              return (
-                <div key={row.id} className="kdash-pair">
-                  <span>{row.label}<small className="cell-sub">{formatCrore(row.approved)} approved</small></span>
-                  <i className="kdash-stack" style={{ width: `${(row.approved / max) * 100}%` }}>
-                    <b style={{ width: `${pct ?? 0}%` }} />
-                  </i>
-                  <strong>{pct === null ? "Not reported" : `${pct}% utilised`}</strong>
-                </div>
-              );
-            })}
-          </div>
-          {!finance.length ? <EmptyState title="No projects" message="Approved funding will appear here when projects are added." /> : null}
-        </section>
-        <section className="panel">
-          <header><div><h2>KPI Submission Trend</h2><p>Number of KPI report submissions recorded in each fiscal quarter.</p></div></header>
+        <FinancialTimeline rows={finance} />
+        <section className="panel kdash-submission-panel">
+          <header><div><h2>KPI Submission Trend</h2><p>Quarterly reporting activity</p></div></header>
           <TrendChart rows={trend} />
         </section>
         <section className="panel">
           <header className="chart-head">
-            <div><h2>Project Location-wise Achievement</h2><p>Reported KPI achievement for each site in the selected project.</p></div>
+            <div><h2>Project Location-wise Achievement</h2><p>Reported KPI achievement for project sites in the selected scope.</p></div>
           </header>
-          <label className="kdash-select">
-            <span className="sr-only">Project</span>
-            <select value={drill?.id ?? ""} disabled={Boolean(filters.projectId)} onChange={(event) => setDrillProject(event.target.value)}>
-              {scoped.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
-            </select>
-          </label>
-          {drill ? (
+          {scoped.length ? (
             <div className="kdash-bars">
-              {drill.locations.filter((location) => locationMatchesFilters(drill, location, activeFilters)).map((location) => {
-                const rows = kpisFor([drill], activeFilters).filter((kpi) => kpi.locationId === location.id && kpi.reported !== false);
+              {scoped.flatMap((project) => project.locations.filter((location) => locationMatchesFilters(project, location, activeFilters)).map((location) => {
+                const rows = kpisFor([project], activeFilters).filter((kpi) => kpi.locationId === location.id && kpi.reported !== false);
                 const value = rows.length ? averagePercent(rows) : null;
                 return (
-                  <button key={location.id} type="button" className="kdash-pair kdash-hit" onClick={() => setSelectedPin(`${drill.id}:${location.id}`)}>
-                    <span>{location.name}<small className="cell-sub">{location.district}, {location.state}</small></span>
+                  <button key={`${project.id}:${location.id}`} type="button" className="kdash-pair kdash-hit" onClick={() => setSelectedPin(`${project.id}:${location.id}`)}>
+                    <span title={`${project.name}: ${location.name}`}>{location.name}<small className="cell-sub">{project.name} · {location.district}, {location.state}</small></span>
                     <i><b className="achieved" style={{ width: `${Math.min(value ?? 0, 100)}%` }} /></i>
                     <strong>{value === null ? "No reports" : `${value}%`}</strong>
                   </button>
                 );
-              })}
+              }))}
             </div>
           ) : null}
         </section>
@@ -414,7 +399,7 @@ export function KpiDashboardScreen() {
                 { key: "component", header: "Component", render: (row) => componentShort(row.component) },
                 { key: "locations", header: "Location(s)", render: (row) => row.locations.filter((location) => locationMatchesFilters(row, location, activeFilters)).map((location) => location.name).join(", ") },
                 { key: "agency", header: "Agency", render: (row) => row.agencies.join(", ") },
-                { key: "funding", header: "Funding", render: (row) => `${formatCrore(row.approvedCost)} · ${row.utilised === null ? "utilisation not reported" : `${Math.round((row.utilised / row.approvedCost) * 100)}% used`}` },
+                { key: "funding", header: "Funding", render: (row) => `${formatLakhs(row.approvedCost)} · ${financialNote(row)}` },
                 { key: "progress", header: "KPI progress", render: (row) => { const reported = row.kpis.filter((kpi) => kpi.reported !== false); return reported.length ? `${averagePercent(reported)}%` : "No reports"; } },
                 { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
               ]}
@@ -424,30 +409,30 @@ export function KpiDashboardScreen() {
         ) : <EmptyState title="No projects" message="No projects match these filters." />}
       </section>
 
-      {viewProject ? (
-        <section className="panel" id="project-view">
+      <section className="panel" id="project-view">
           <header>
             <div>
               <h2>Project view</h2>
-              <p>One project record: details, sites, activities, agencies, KPIs, documents, and the audit trail.</p>
+              <p>{viewProject ? viewProject.name : "All projects in the current scope"}</p>
             </div>
-            <label className="kdash-select">
-              <span className="sr-only">Project</span>
-              <select value={viewProject.id} onChange={(event) => setViewId(event.target.value)}>
-                {scoped.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
-              </select>
-            </label>
           </header>
-          <ProjectView key={viewProject.id} project={viewProject} />
+          {viewProject ? <ProjectView key={viewProject.id} project={viewProject} /> : <ProjectRecords key={`${activeFilters.state}:${activeFilters.district}:${scoped.map((project) => project.id).join(",")}`} projects={scoped.map((project) => ({
+            ...project,
+            locations: project.locations.filter((location) => locationMatchesFilters(project, location, activeFilters)),
+            links: project.links.filter((link) => {
+              const location = locationById(project, link.locationId);
+              return location && locationMatchesFilters(project, location, activeFilters);
+            }),
+            kpis: kpisFor([project], activeFilters),
+          }))} />}
         </section>
-      ) : null}
     </div>
   );
 }
 
 function ChartPanel({ title, description, rows }: { title: string; description: string; rows: { id: string; label: string; value: number | null; note?: string }[] }) {
   return (
-    <section className="panel">
+    <section className="panel kdash-wide">
       <header><div><h2 title={title}>{title}</h2><p>{description}</p></div></header>
       {rows.length ? <div className="kdash-bars">
         {rows.map((row) => (
@@ -462,59 +447,52 @@ function ChartPanel({ title, description, rows }: { title: string; description: 
   );
 }
 
-function ComponentDonut({ rows }: { rows: { label: string; value: number }[] }) {
-  const sum = rows.reduce((total, row) => total + row.value, 0);
-  const total = sum || 1;
-  const average = rows.length ? Math.round(sum / rows.length) : 0;
-  let cursor = 0;
-  const gradient = sum ? rows.map((row) => {
-    const start = cursor;
-    cursor += (row.value / total) * 100;
-    return `${pinColors[row.label] ?? "#2f6fed"} ${start}% ${cursor}%`;
-  }).join(", ") : "#e6edf5 0% 100%";
-  return (
-    <section className="panel">
-      <header><div><h2>KPI achievement by NCM component</h2><p>Average reported KPI achievement grouped by NCM component type.</p></div></header>
-      {rows.length ? <div className="donut-wrap status-donut">
-        <div className="donut" style={{ background: `conic-gradient(${gradient})` }} aria-hidden="true">
-          <span className="donut-hub"><small>Avg</small><strong>{average}%</strong></span>
-        </div>
-        <ul>
-          {rows.map((row, index) => (
-            <li key={`${row.label}-${index}`}><i style={{ background: pinColors[row.label] ?? "#2f6fed" }} />{row.label}<strong>{row.value}%</strong></li>
-          ))}
-        </ul>
-      </div> : <EmptyState title="No KPI submissions" message="Component achievement will appear after project KPIs are submitted." />}
-    </section>
-  );
-}
-
 function TrendChart({ rows }: { rows: { index: number; label: string; count: number }[] }) {
-  const width = 640;
+  const total = rows.reduce((sum, row) => sum + row.count, 0);
+  const latest = rows.at(-1);
+  const peak = Math.max(...rows.map((row) => row.count), 1);
+  const max = peak === 1 ? 1 : Math.ceil(peak * 1.25);
+  const width = 600;
   const height = 180;
-  const max = Math.max(...rows.map((row) => row.count), 1);
-  const points = rows.map((row, index) => {
-    const x = 84 + (index * (width - 168)) / Math.max(rows.length - 1, 1);
-    const y = 16 + ((max - row.count) / max) * (height - 42);
-    return { x, y, value: row.count, label: row.label };
-  });
-  const line = points.map((point) => `${point.x},${point.y}`).join(" ");
-  const marks = [...new Set([0, Math.ceil(max / 3), Math.ceil((max * 2) / 3), max])];
+  const left = 42;
+  const right = width - 20;
+  const top = 24;
+  const bottom = height - 16;
+  const columnWidth = (right - left) / Math.max(rows.length, 1);
+  const points = rows.map((row, index) => ({ ...row, x: left + (index + 0.5) * columnWidth, y: bottom - (row.count / max) * (bottom - top) }));
+  const marks = [...new Set([0, Math.ceil(max / 2), max])];
   return (
-    <svg className="kdash-trend" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="KPI report submissions per fiscal quarter">
-      {marks.map((mark) => {
-        const y = 16 + ((max - mark) / max) * (height - 42);
-        return <g key={mark}><line x1="44" x2={width - 24} y1={y} y2={y} stroke="#e6edf5" /><text x="30" y={y + 4} textAnchor="end" fill="#8b96a3" fontSize="11">{mark}</text></g>;
-      })}
-      <polyline fill="none" stroke="#00389a" strokeWidth="3" points={line} />
-      {points.map((point) => (
-        <g key={point.label}>
-          <title>{`${point.label}: ${point.value} submissions`}</title>
-          <circle cx={point.x} cy={point.y} r="4" fill="#00389a" />
-          <text x={point.x} y={height - 4} textAnchor="middle" fill="#66788a" fontSize="11">{point.label}</text>
-        </g>
-      ))}
-    </svg>
+    <div className={`kdash-submission-trend${total ? "" : " is-empty"}`}>
+      <dl className="kdash-submission-summary">
+        <div><dt>Total submissions</dt><dd>{total.toLocaleString("en-IN")}<small>{rows.length} quarters</small></dd></div>
+        <div><dt>Current quarter</dt><dd>{(latest?.count ?? 0).toLocaleString("en-IN")}<small>{latest?.label}</small></dd></div>
+      </dl>
+      <div className="kdash-submission-line">
+        <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`KPI report submissions per fiscal quarter. ${rows.map((row) => `${row.label}: ${row.count}`).join("; ")}`}>
+          <title>KPI Submission Trend</title>
+          {latest ? <rect x={right - columnWidth} y={8} width={columnWidth} height={height - 8} rx={6} fill="#edf7f5" /> : null}
+          {marks.map((mark) => {
+            const y = bottom - (mark / max) * (bottom - top);
+            return <g key={mark}><line x1={left} x2={right} y1={y} y2={y} stroke="#e6edf5" strokeDasharray={mark ? "3 5" : undefined} /><text x={left - 12} y={y + 4} textAnchor="end" fill="#66788a" fontSize="12">{mark}</text></g>;
+          })}
+          <polyline className="kdash-submission-line-path" points={points.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" stroke="#00389a" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+          {points.map((point) => <g key={point.index}>
+            <title>{`${point.label}: ${point.count} submissions`}</title>
+            <circle cx={point.x} cy={point.y} r={point.index === latest?.index ? 5 : 4} fill={point.index === latest?.index ? "#14846b" : "#00389a"} stroke="#fff" strokeWidth={2} />
+            <text x={point.x} y={point.y - 13} textAnchor="middle" fill={point.index === latest?.index ? "#087f72" : "#526070"} fontSize="13" fontWeight="600">{point.count}</text>
+          </g>)}
+        </svg>
+      </div>
+      <div className="kdash-submission-labels" style={{ gridTemplateColumns: `repeat(${Math.max(rows.length, 1)}, minmax(0, 1fr))` }}>
+        {rows.map((row) => {
+          const [quarter, financialYear] = row.label.split(" ");
+          return (
+            <span key={row.index} className={`kdash-quarter-label${row.index === latest?.index ? " is-current" : ""}`}>{quarter}<small>{financialYear}</small></span>
+          );
+        })}
+      </div>
+      {!total ? <p className="kdash-submission-empty">No submissions recorded in these quarters.</p> : null}
+    </div>
   );
 }
 

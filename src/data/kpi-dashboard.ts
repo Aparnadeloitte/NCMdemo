@@ -14,6 +14,7 @@ export type DashKpi = {
   activity: string;
   locationId: string;
   agency: string;
+  agencyNames?: string[];
   evidence: string;
   remarks: string;
   ai: string;
@@ -30,6 +31,14 @@ export type DashLocation = {
   lng: number;
 };
 
+export type DashFinancialSeries = {
+  id: string;
+  label: string;
+  locationId: string;
+  unit: "lakhs" | "%";
+  points: { date: string; value: number }[];
+};
+
 export type DashProject = {
   id: string;
   name: string;
@@ -37,6 +46,8 @@ export type DashProject = {
   status: KpiProjectStatus;
   approvedCost: number;
   utilised: number | null;
+  financialSeries?: DashFinancialSeries[];
+  financialPeriod?: { start: string; end: string };
   locations: DashLocation[];
   activities: string[];
   agencies: string[];
@@ -583,6 +594,10 @@ export function averagePercent(kpis: DashKpi[]) {
 
 export function formatCrore(value: number) {
   return `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 1 })} Cr`;
+}
+
+export function formatLakhs(valueInCrore: number) {
+  return `₹${(valueInCrore * 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })} lakh`;
 }
 
 export function formatMeasure(value: number, unit: string) {

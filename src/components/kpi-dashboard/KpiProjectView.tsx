@@ -29,11 +29,7 @@ const pinColors: Record<string, string> = {
 };
 
 export function ProjectView({ project }: { project: DashProject }) {
-  const [openId, setOpenId] = useState("");
-  const [page, setPage] = useState(1);
-  const [auditPage, setAuditPage] = useState(1);
   const [selectedPin, setSelectedPin] = useState("");
-  const open = project.kpis.find((kpi) => kpi.id === openId) ?? null;
 
   return (
     <div className="kdash-project">
@@ -47,10 +43,21 @@ export function ProjectView({ project }: { project: DashProject }) {
       <Overview project={project} />
       <Locations project={project} selectedPin={selectedPin} onSelect={setSelectedPin} />
       <Activities project={project} />
-      <Agencies project={project} />
-      <Kpis project={project} page={page} onPage={setPage} open={open} onOpen={setOpenId} />
-      <Documents project={project} />
-      <Audit project={project} page={auditPage} onPage={setAuditPage} />
+      <ProjectRecords projects={[project]} />
+    </div>
+  );
+}
+
+export function ProjectRecords({ projects }: { projects: DashProject[] }) {
+  const [openId, setOpenId] = useState("");
+  const [page, setPage] = useState(1);
+  const [auditPage, setAuditPage] = useState(1);
+  return (
+    <div className="kdash-project">
+      <Agencies projects={projects} />
+      <Kpis projects={projects} page={page} onPage={setPage} openId={openId} onOpen={setOpenId} />
+      <Documents projects={projects} />
+      <Audit projects={projects} page={auditPage} onPage={setAuditPage} />
     </div>
   );
 }
@@ -158,29 +165,33 @@ function Activities({ project }: { project: DashProject }) {
 
 const pageSize = 5;
 
-function Agencies({ project }: { project: DashProject }) {
+function Agencies({ projects }: { projects: DashProject[] }) {
   const [page, setPage] = useState(1);
-  const visible = project.links.slice((page - 1) * pageSize, page * pageSize);
+  const rows = projects.flatMap((project) => project.links.map((link, index) => ({ ...link, project, id: `${project.id}:agency:${index}` })));
+  const visible = rows.slice((page - 1) * pageSize, page * pageSize);
   return (
     <section className="panel projects-table">
       <header><div><h2>Implementation agencies</h2><p>Each agency is mapped to the locations and activities it carries out.</p></div></header>
       <DataTable
         rows={visible}
-        rowKey={(row) => `${row.agency}:${row.locationId}:${row.activity}`}
+        rowKey={(row) => row.id}
         columns={[
+          ...(projects.length > 1 ? [{ key: "project", header: "Project", render: (row: typeof rows[number]) => row.project.name }] : []),
           { key: "agency", header: "Agency", render: (row) => row.agency },
-          { key: "location", header: "Location", render: (row) => locationById(project, row.locationId)?.name ?? row.locationId },
+          { key: "location", header: "Location", render: (row) => locationById(row.project, row.locationId)?.name ?? row.locationId },
           { key: "activity", header: "Activity", render: (row) => row.activity },
         ]}
       />
-      <Pagination page={page} pageSize={pageSize} total={project.links.length} onPage={setPage} />
+      <Pagination page={page} pageSize={pageSize} total={rows.length} onPage={setPage} />
     </section>
   );
 }
 
-async function downloadKpiGrid(projectName: string, rows: DashKpi[], project: DashProject) {
+async function downloadKpiGrid(projectName: string, rows: { kpi: DashKpi; project: DashProject }[]) {
   const XLSX = await import("xlsx");
-  const sheet = XLSX.utils.json_to_sheet(rows.map((row) => ({
+  const headers = ["Project", "KPI", "Activity", "Sub-activity", "Location", "Agency", "Target", "Achievement", "Achievement %", "Verification", "Attachment"];
+  const sheet = XLSX.utils.json_to_sheet(rows.map(({ kpi: row, project }) => ({
+    Project: project.name,
     KPI: row.name,
     Activity: row.activity,
     "Sub-activity": row.group,
@@ -191,47 +202,67 @@ async function downloadKpiGrid(projectName: string, rows: DashKpi[], project: Da
     "Achievement %": row.reported === false ? "\u2014" : `${kpiPercent(row)}%`,
     Verification: row.status,
     Attachment: row.evidence,
-  })));
+  })), { header: headers });
   const book = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(book, sheet, "KPIs");
   XLSX.writeFile(book, `${projectName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-kpis.xlsx`);
 }
 
-function Kpis({ project, page, onPage, open, onOpen }: { project: DashProject; page: number; onPage: (page: number) => void; open: DashKpi | null; onOpen: (id: string) => void }) {
+function Kpis({ projects, page, onPage, openId, onOpen }: { projects: DashProject[]; page: number; onPage: (page: number) => void; openId: string; onOpen: (id: string) => void }) {
+  const [agency, setAgency] = useState("");
   const rows = useMemo(() => {
-    const seen = new Map<string, DashKpi>();
-    project.kpis.forEach((kpi) => {
+    const seen = new Map<string, { kpi: DashKpi; project: DashProject }>();
+    projects.forEach((project) => project.kpis.forEach((kpi) => {
       const place = locationById(project, kpi.locationId)?.name ?? kpi.locationId;
-      const key = `${kpi.name}|${place}|${kpi.activity}|${kpi.agency}`;
+      const key = `${project.id}|${kpi.name}|${place}|${kpi.activity}|${kpi.agency}`;
       const current = seen.get(key);
-      if (!current || (kpi.reported && kpi.history.length >= current.history.length)) seen.set(key, kpi);
-    });
+      if (!current || (kpi.reported && kpi.history.length >= current.kpi.history.length)) seen.set(key, { kpi, project });
+    }));
     return [...seen.values()];
-  }, [project]);
-  const visible = rows.slice((page - 1) * pageSize, page * pageSize);
+  }, [projects]);
+  const agencies = [...new Set([...projects.flatMap((project) => project.agencies), ...rows.flatMap(({ kpi }) => kpi.agencyNames ?? [kpi.agency])])].filter(Boolean).sort((left, right) => left.localeCompare(right));
+  const selectedAgency = agencies.includes(agency) ? agency : "";
+  const filteredRows = rows.filter(({ kpi }) => !selectedAgency || (kpi.agencyNames ?? [kpi.agency]).includes(selectedAgency));
+  const open = filteredRows.find(({ project, kpi }) => `${project.id}:${kpi.id}` === openId);
+  const visible = filteredRows.slice((page - 1) * pageSize, page * pageSize);
   return (
     <section className="panel projects-table kdash-kpi-table">
-      <header>
-        <div><h2>KPIs</h2><p>Open a KPI for its definition, history, evidence, remarks, and review.</p></div>
-        <button type="button" className="btn-ghost" onClick={() => void downloadKpiGrid(project.name, rows, project)}>Download KPIs</button>
+      <header className="kdash-kpi-header">
+        <div className="kdash-kpi-heading">
+          <div className="kdash-kpi-title"><h2>KPIs</h2><span>{filteredRows.length.toLocaleString("en-IN")} results</span></div>
+          <p>Open a KPI for its definition, history, evidence, remarks, and review.</p>
+        </div>
+        <div className="kdash-kpi-toolbar">
+          <div className="kdash-kpi-agency-group">
+            <label className="kdash-kpi-agency-filter"><span>Agency</span>
+              <select aria-label="KPI agency" title={selectedAgency || "All agencies"} value={selectedAgency} onChange={(event) => { setAgency(event.target.value); onPage(1); onOpen(""); }}>
+                <option value="">All agencies</option>
+                {agencies.map((name) => <option key={name} value={name}>{name}</option>)}
+              </select>
+            </label>
+            {selectedAgency ? <button type="button" className="kdash-kpi-clear" aria-label="Clear agency filter" title="Clear agency filter" onClick={() => { setAgency(""); onPage(1); onOpen(""); }}>×</button> : null}
+          </div>
+          <button type="button" className="btn-ghost" onClick={() => void downloadKpiGrid(projects.length === 1 ? projects[0].name : "dashboard", filteredRows)}>Download KPIs</button>
+        </div>
       </header>
       <DataTable
         rows={visible}
-        rowKey={(row) => row.id}
+        rowKey={(row) => `${row.project.id}:${row.kpi.id}`}
         columns={[
-          { key: "kpi", header: "KPI", render: (row) => <button type="button" className="kdash-kpi" onClick={() => onOpen(row.id === open?.id ? "" : row.id)}>{row.name}</button> },
-          { key: "activity", header: "Activity", render: (row) => row.activity },
-          { key: "subActivity", header: "Sub-activity", render: (row) => row.group },
-          { key: "location", header: "Location", render: (row) => locationById(project, row.locationId)?.name ?? "" },
-          { key: "agency", header: "Agency", render: (row) => row.agency },
-          { key: "target", header: "Target", render: (row) => formatMeasure(row.target, row.unit) },
-          { key: "achievement", header: "Achievement", render: (row) => row.reported === false ? "Not reported" : formatMeasure(row.achievement, row.unit) },
-          { key: "status", header: "Verification", render: (row) => <span className={`kdash-pill ${row.status.toLowerCase()}`}>{row.status}</span> },
-          { key: "attachment", header: "Attachment", render: (row) => <button type="button" className="view-icon-btn" aria-label={`View attachment for ${row.name}`} title={row.evidence} onClick={() => onOpen(row.id === open?.id ? "" : row.id)}><AttachmentIcon /></button> },
+          ...(projects.length > 1 ? [{ key: "project", header: "Project", render: (row: typeof rows[number]) => row.project.name }] : []),
+          { key: "kpi", header: "KPI", render: ({ project, kpi }) => <button type="button" className="kdash-kpi" onClick={() => onOpen(`${project.id}:${kpi.id}` === openId ? "" : `${project.id}:${kpi.id}`)}>{kpi.name}</button> },
+          { key: "activity", header: "Activity", render: ({ kpi }) => kpi.activity },
+          { key: "subActivity", header: "Sub-activity", render: ({ kpi }) => kpi.group },
+          { key: "location", header: "Location", render: ({ project, kpi }) => locationById(project, kpi.locationId)?.name ?? "" },
+          { key: "agency", header: "Agency", render: ({ kpi }) => kpi.agency },
+          { key: "target", header: "Target", render: ({ kpi }) => formatMeasure(kpi.target, kpi.unit) },
+          { key: "achievement", header: "Achievement", render: ({ kpi }) => kpi.reported === false ? "Not reported" : formatMeasure(kpi.achievement, kpi.unit) },
+          { key: "status", header: "Verification", render: ({ kpi }) => <span className={`kdash-pill ${kpi.status.toLowerCase()}`}>{kpi.status}</span> },
+          { key: "attachment", header: "Attachment", render: ({ project, kpi }) => <button type="button" className="view-icon-btn" aria-label={`View attachment for ${kpi.name}`} title={kpi.evidence} onClick={() => onOpen(`${project.id}:${kpi.id}` === openId ? "" : `${project.id}:${kpi.id}`)}><AttachmentIcon /></button> },
         ]}
       />
-      <Pagination page={page} pageSize={pageSize} total={rows.length} onPage={onPage} />
-      {open ? <KpiDetail project={project} kpi={open} /> : null}
+      <Pagination page={page} pageSize={pageSize} total={filteredRows.length} onPage={onPage} />
+      {open ? <KpiDetail project={open.project} kpi={open.kpi} /> : null}
     </section>
   );
 }
@@ -260,18 +291,21 @@ function KpiDetail({ project, kpi }: { project: DashProject; kpi: DashKpi }) {
   );
 }
 
-function Documents({ project }: { project: DashProject }) {
+function Documents({ projects }: { projects: DashProject[] }) {
   const [page, setPage] = useState(1);
-  const evidence = [...new Set(project.kpis.map((kpi) => kpi.evidence))].map((name) => ({ name, kind: "Evidence" as const, date: "02 Sep 2025" }));
-  const rows = [...project.documents, ...evidence];
+  const rows = projects.flatMap((project) => {
+    const evidence = [...new Set(project.kpis.map((kpi) => kpi.evidence))].map((name) => ({ name, kind: "Evidence" as const, date: "02 Sep 2025" }));
+    return [...project.documents, ...evidence].map((document, index) => ({ ...document, project, id: `${project.id}:document:${index}` }));
+  });
   const visible = rows.slice((page - 1) * pageSize, page * pageSize);
   return (
     <section className="panel projects-table">
       <header><div><h2>Documents</h2><p>Project documents and KPI evidence.</p></div></header>
       <DataTable
         rows={visible}
-        rowKey={(row) => `${row.kind}:${row.name}`}
+        rowKey={(row) => row.id}
         columns={[
+          ...(projects.length > 1 ? [{ key: "project", header: "Project", render: (row: typeof rows[number]) => row.project.name }] : []),
           { key: "name", header: "Document", render: (row) => row.name },
           { key: "kind", header: "Type", render: (row) => row.kind },
           { key: "date", header: "Date", render: (row) => row.date },
@@ -282,22 +316,25 @@ function Documents({ project }: { project: DashProject }) {
   );
 }
 
-function Audit({ project, page, onPage }: { project: DashProject; page: number; onPage: (page: number) => void }) {
-  const kpiEvents = project.kpis.flatMap((kpi) => kpi.history.map((item) => ({
+function Audit({ projects, page, onPage }: { projects: DashProject[]; page: number; onPage: (page: number) => void }) {
+  const rows = projects.flatMap((project) => {
+    const kpiEvents = project.kpis.flatMap((kpi) => kpi.history.map((item) => ({
     date: item.date,
     actor: item.actor,
     action: `${kpi.name} · ${item.action}`,
     note: item.note,
-  })));
-  const rows = [...project.audit, ...kpiEvents];
+    })));
+    return [...project.audit, ...kpiEvents].map((event, index) => ({ ...event, project, id: `${project.id}:audit:${index}` }));
+  });
   const visible = rows.slice((page - 1) * pageSize, page * pageSize);
   return (
     <section className="panel projects-table">
       <header><div><h2>Audit trail</h2><p>Submission, review, approval, and status changes for this project and its KPI reports.</p></div></header>
       <DataTable
         rows={visible}
-        rowKey={(row) => `${row.date}:${row.action}:${row.note}`}
+        rowKey={(row) => row.id}
         columns={[
+          ...(projects.length > 1 ? [{ key: "project", header: "Project", render: (row: typeof rows[number]) => row.project.name }] : []),
           { key: "date", header: "Date", render: (row) => row.date },
           { key: "actor", header: "Actor", render: (row) => row.actor },
           { key: "action", header: "Action", render: (row) => row.action },
