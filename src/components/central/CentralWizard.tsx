@@ -792,27 +792,29 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                     </td>
                     <td>
                       <div className="kpi-evidence-cell">
-                        <div className="choice-row kpi-choice">
-                          <label><input type="radio" name={`evidence-${kpi.id}`} checked={Boolean(kpi.evidenceRequired)} onChange={() => patchKpi(kpi.id, { evidenceRequired: true, noEvidence: false })} /> Yes</label>
-                          <label><input type="radio" name={`evidence-${kpi.id}`} checked={!kpi.evidenceRequired} onChange={() => patchKpi(kpi.id, { evidenceRequired: false, noEvidence: true, evidence: "", evidenceTypes: [] })} /> No</label>
-                        </div>
-                        {kpi.evidenceRequired ? (
-                          <div className="kpi-file-types">
-                            {kpiFileTypes.map((type) => (
-                              <label key={type.id}>
-                                <input
-                                  type="checkbox"
-                                  checked={kpi.evidenceTypes?.includes(type.id) ?? false}
-                                  onChange={(event) => {
-                                    const current = kpi.evidenceTypes ?? [];
-                                    patchKpi(kpi.id, { evidenceTypes: event.target.checked ? [...current, type.id] : current.filter((item) => item !== type.id) });
-                                  }}
-                                />
-                                {type.label}
-                              </label>
-                            ))}
+                        <div className="kpi-choice kpi-evidence-choice">
+                          <div className="choice-row">
+                            <label><input type="radio" name={`evidence-${kpi.id}`} checked={Boolean(kpi.evidenceRequired)} onChange={() => patchKpi(kpi.id, { evidenceRequired: true, noEvidence: false })} /> Yes</label>
+                            <label><input type="radio" name={`evidence-${kpi.id}`} checked={!kpi.evidenceRequired} onChange={() => patchKpi(kpi.id, { evidenceRequired: false, noEvidence: true, evidence: "", evidenceTypes: [] })} /> No</label>
                           </div>
-                        ) : null}
+                          {kpi.evidenceRequired ? (
+                            <div className="kpi-file-types">
+                              {kpiFileTypes.map((type) => (
+                                <label key={type.id}>
+                                  <input
+                                    type="checkbox"
+                                    checked={kpi.evidenceTypes?.includes(type.id) ?? false}
+                                    onChange={(event) => {
+                                      const current = kpi.evidenceTypes ?? [];
+                                      patchKpi(kpi.id, { evidenceTypes: event.target.checked ? [...current, type.id] : current.filter((item) => item !== type.id) });
+                                    }}
+                                  />
+                                  {type.label}
+                                </label>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                     </td>
                     <td><button className="remove-icon-btn" type="button" aria-label="Remove KPI" onClick={() => patch({ kpis: draft.kpis.filter((item) => item.id !== kpi.id) })}><TrashIcon /></button></td>

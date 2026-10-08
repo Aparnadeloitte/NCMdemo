@@ -635,19 +635,21 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 .kpi-table th { white-space: nowrap; }
 .kpi-table tbody tr:hover { background: #fafbfd; }
 .kpi-table td:last-child { width: 48px; text-align: center; }
-.kpi-table th:nth-child(1), .kpi-table td:nth-child(1) { min-width: 210px; }
+.kpi-table th:nth-child(1), .kpi-table td:nth-child(1) { min-width: 240px; }
 .kpi-table th:nth-child(2), .kpi-table td:nth-child(2) { min-width: 160px; }
 .kpi-table th:nth-child(5), .kpi-table td:nth-child(5) { min-width: 210px; }
 .kpi-table th:nth-child(7), .kpi-table td:nth-child(7) { min-width: 170px; }
 .kpi-table th:nth-child(8), .kpi-table td:nth-child(8) { min-width: 190px; }
 .kpi-source-cell, .kpi-target-cell, .kpi-evidence-cell { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
-.kpi-table .kpi-choice { flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 1px solid #e6edf5; border-radius: 8px; background: #f8fafc; }
-.kpi-table .kpi-source-choice { flex-direction: row; flex-wrap: wrap; gap: 10px 16px; }
+.kpi-table .kpi-choice { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 1px solid #e6edf5; border-radius: 8px; background: #f8fafc; }
+.kpi-table .kpi-evidence-choice { align-items: stretch; }
+.kpi-table .kpi-evidence-choice .choice-row { flex-wrap: nowrap; gap: 16px; }
+.kpi-table .kpi-source-choice { flex-direction: row; flex-wrap: nowrap; gap: 16px; }
 .kpi-table .kpi-choice label,
 .kpi-table .kpi-file-types label { display: flex; align-items: center; gap: 8px; margin: 0; color: #24384c; font-size: 13px; font-weight: 600; line-height: 1.2; white-space: nowrap; }
 .kpi-table input[type="radio"],
 .kpi-table input[type="checkbox"] { width: 16px; height: 16px; min-height: 16px; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; flex: none; accent-color: #00389a; }
-.kpi-table .kpi-file-types { display: grid; gap: 6px; margin-top: 2px; padding-top: 8px; border-top: 1px dashed #e4e7ec; }
+.kpi-table .kpi-file-types { display: grid; gap: 6px; width: 100%; margin-top: 2px; padding-top: 8px; border-top: 1px dashed #e4e7ec; }
 .kpi-table .kpi-range { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .kpi-table .kpi-target-cell input:not([type="radio"]),
 .kpi-table .kpi-range input { width: 100%; height: 36px; }
