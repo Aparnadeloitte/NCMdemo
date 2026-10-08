@@ -178,10 +178,19 @@ function Agencies({ project }: { project: DashProject }) {
 }
 
 function Kpis({ project, page, onPage, open, onOpen }: { project: DashProject; page: number; onPage: (page: number) => void; open: DashKpi | null; onOpen: (id: string) => void }) {
-  const rows = useMemo(() => project.kpis, [project]);
+  const rows = useMemo(() => {
+    const seen = new Map<string, DashKpi>();
+    project.kpis.forEach((kpi) => {
+      const place = locationById(project, kpi.locationId)?.name ?? kpi.locationId;
+      const key = `${kpi.name}|${place}|${kpi.activity}|${kpi.agency}`;
+      const current = seen.get(key);
+      if (!current || (kpi.reported && kpi.history.length >= current.history.length)) seen.set(key, kpi);
+    });
+    return [...seen.values()];
+  }, [project]);
   const visible = rows.slice((page - 1) * pageSize, page * pageSize);
   return (
-    <section className="panel projects-table">
+    <section className="panel projects-table kdash-kpi-table">
       <header><h2>KPIs</h2><p>Open a KPI for its definition, history, evidence, remarks, and review.</p></header>
       <DataTable
         rows={visible}
