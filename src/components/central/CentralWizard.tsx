@@ -766,7 +766,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                         )}
                       </div>
                     </td>
-                    <td><input aria-label="KPI" value={kpi.name} onChange={(event) => patchKpi(kpi.id, { name: event.target.value })} /></td>
+                    <td><textarea aria-label="KPI" rows={1} value={kpi.name} onChange={(event) => patchKpi(kpi.id, { name: event.target.value })} /></td>
                     <td><input aria-label="Unit of measurement" value={kpi.unit} onChange={(event) => patchKpi(kpi.id, { unit: event.target.value })} /></td>
                     <td><input aria-label="Baseline" value={kpi.baseline} onChange={(event) => patchKpi(kpi.id, { baseline: event.target.value })} /></td>
                     <td>
