@@ -176,6 +176,21 @@ export function reviewCentralProject(id: string, decision: "approved" | "returne
   return all[index];
 }
 
+export function addCentralProjectFeedback(id: string, author: string, note: string) {
+  const all = readProjects();
+  const index = all.findIndex((item) => item.id === id);
+  if (index < 0) throw new Error("This project was not found.");
+  if (!note.trim()) throw new Error("Enter your feedback before sending it.");
+  const entry = { author, date: new Date().toISOString(), note: note.trim() };
+  all[index] = {
+    ...all[index],
+    feedback: [...(all[index].feedback ?? []), entry],
+    updated: new Date().toISOString(),
+  };
+  writeProjects(all);
+  return all[index];
+}
+
 export function reportsForProject(projectId: string) {
   return readReports().filter((item) => item.projectId === projectId);
 }

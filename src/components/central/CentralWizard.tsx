@@ -7,7 +7,7 @@ import { PolygonSketch, square } from "@/components/central/PolygonSketch";
 import { EmptyState } from "@/components/ui/Feedback";
 import { TrashIcon } from "@/components/ui/icons";
 import { activityMatrixForComponent } from "@/data/activity-matrix";
-import { agencyById, agenciesForActivity, agencyTypes, blankActivity, blankAssignment, blankKpi, blankLocation, emptyCentralProject, financialYears, listAgencyRecords, locationLabel, ncmComponents, rowId, standardKpis } from "@/data/central";
+import { agencyById, agenciesForActivity, agencyTypes, blankActivity, blankAssignment, blankKpi, blankLocation, emptyCentralProject, financialYears, kpiFileTypes, kpiTargetBounds, listAgencyRecords, locationLabel, ncmComponents, rowId, standardKpis } from "@/data/central";
 import { downloadKpiTemplate, readKpiTemplate } from "@/lib/kpi-template";
 import { districtCentroid, districtsByState, siteCentroid, sitesByDistrict, stateCentroids, states } from "@/data/options";
 import { getSession } from "@/lib/session";
@@ -61,7 +61,14 @@ function validate(draft: CentralProject, step: number) {
     if (!draft.kpis.length) return "Add at least one KPI.";
     for (const kpi of draft.kpis) {
       if (kpi.source === "custom" && !kpi.templateFile.trim()) return "Upload the KPI template for each custom KPI.";
-      if (!kpi.name.trim() || !kpi.unit.trim() || !kpi.baseline.trim() || !kpi.target.trim() || !kpi.frequency || !kpi.activityId) return "Complete every KPI, including the activity it belongs to.";
+      if (!kpi.name.trim() || !kpi.unit.trim() || !kpi.baseline.trim() || !kpi.frequency || !kpi.activityId) return "Complete every KPI, including the activity it belongs to.";
+      if (kpi.targetMode === "range") {
+        if (!kpi.targetMin?.trim() || !kpi.targetMax?.trim()) return "Enter the minimum and maximum for every range target.";
+        const bounds = kpiTargetBounds(kpi);
+        if (!Number.isFinite(bounds.min) || !Number.isFinite(bounds.max)) return "Enter numbers for the minimum and maximum, for example 20 and 80.";
+        if (bounds.max < bounds.min) return `The maximum target for “${kpi.name}” must be at least the minimum.`;
+      } else if (!kpi.target.trim() || !Number.isFinite(Number(kpi.target))) return "Enter a fixed number for the target, for example 56.";
+      if (kpi.evidenceRequired && !kpi.evidenceTypes?.length) return `Select at least one evidence file type for “${kpi.name || "this KPI"}”.`;
       if (!agenciesForActivity(draft, kpi.activityId).length) return `Tag an agency to the activity used by “${kpi.name || "this KPI"}”.`;
     }
   }
@@ -145,9 +152,20 @@ function AgencyNameField({ type, agencyId, onSelect }: { type: string; agencyId:
   );
 }
 
+function withNumericTargets(project: CentralProject): CentralProject {
+  return {
+    ...project,
+    kpis: project.kpis.map((kpi) => {
+      if (kpi.targetMode === "range") return kpi;
+      const number = kpi.target.replaceAll(",", "").match(/-?\d+(?:\.\d+)?/)?.[0] ?? "";
+      return { ...kpi, targetMode: "fixed", target: number };
+    }),
+  };
+}
+
 export function CentralWizard({ initial }: { initial?: CentralProject }) {
   const [step, setStep] = useState(1);
-  const [draft, setDraft] = useState<CentralProject | null>(initial ?? null);
+  const [draft, setDraft] = useState<CentralProject | null>(initial ? withNumericTargets(initial) : null);
   const [error, setError] = useState("");
   const [pending, setPending] = useState<"save" | "next" | "submit" | null>(null);
   const [reference, setReference] = useState("");
@@ -704,7 +722,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
 
       {step === 4 ? (
         <section className="panel proposal-card">
-          <header><h2>KPI configuration</h2><p>Choose a standard KPI and upload a location photo, or upload a custom KPI template.</p></header>
+          <header><h2>KPI configuration</h2><p>Choose a standard KPI or upload a custom KPI template. Set a fixed or range target, and say whether evidence is required.</p></header>
           {draft.kpis.length === 0 ? (
             <EmptyState title="No KPIs added yet" message="Add standard or custom indicators to track this project's progress." />
           ) : (
@@ -719,7 +737,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                   <th>Target</th>
                   <th>Reporting frequency</th>
                   <th>Applicable activity</th>
-                  <th>Evidence (optional)</th>
+                  <th>Evidence required</th>
                   <th><span className="sr-only">Remove</span></th>
                 </tr>
               </thead>
@@ -728,12 +746,12 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                   <tr key={kpi.id} id={`kpi-row-${kpi.id}`}>
                     <td>
                       <div className="kpi-source-cell">
-                        <div className="choice-row">
-                          <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "standard"} onChange={() => { const { evidence: _evidence, ...fields } = standardKpis[0]; patchKpi(kpi.id, { source: "standard", ...fields }); }} /> Standard</label>
-                          <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "custom"} onChange={() => patchKpi(kpi.id, { source: "custom", templateFile: "", name: "", unit: "", baseline: "", target: "", frequency: "", activityId: "", evidence: "", noEvidence: false })} /> Custom</label>
+                        <div className="choice-row kpi-choice kpi-source-choice">
+                          <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "standard"} onChange={() => { const found = standardKpis[0]; const { evidence: _evidence, ...fields } = found; patchKpi(kpi.id, { source: "standard", ...fields, targetMode: "fixed", targetMin: "", targetMax: "" }); }} /> Standard</label>
+                          <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "custom"} onChange={() => patchKpi(kpi.id, { source: "custom", templateFile: "", name: "", unit: "", baseline: "", target: "", targetMode: "fixed", targetMin: "", targetMax: "", frequency: "", activityId: "", evidence: "", noEvidence: true, evidenceRequired: false, evidenceTypes: [] })} /> Custom</label>
                         </div>
                         {kpi.source === "standard" ? (
-                          <select aria-label="KPI master" value={kpi.name} onChange={(event) => { const found = standardKpis.find((item) => item.name === event.target.value) ?? standardKpis[0]; const { evidence: _evidence, ...fields } = found; patchKpi(kpi.id, fields); }}>
+                          <select aria-label="KPI master" value={kpi.name} onChange={(event) => { const found = standardKpis.find((item) => item.name === event.target.value) ?? standardKpis[0]; const { evidence: _evidence, ...fields } = found; patchKpi(kpi.id, { ...fields, targetMode: "fixed", targetMin: "", targetMax: "" }); }}>
                             {standardKpis.map((item) => <option key={item.name}>{item.name}</option>)}
                           </select>
                         ) : (
@@ -751,7 +769,20 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                     <td><input aria-label="KPI" value={kpi.name} onChange={(event) => patchKpi(kpi.id, { name: event.target.value })} /></td>
                     <td><input aria-label="Unit of measurement" value={kpi.unit} onChange={(event) => patchKpi(kpi.id, { unit: event.target.value })} /></td>
                     <td><input aria-label="Baseline" value={kpi.baseline} onChange={(event) => patchKpi(kpi.id, { baseline: event.target.value })} /></td>
-                    <td><input aria-label="Target" value={kpi.target} onChange={(event) => patchKpi(kpi.id, { target: event.target.value })} /></td>
+                    <td>
+                      <div className="kpi-target-cell">
+                        <div className="choice-row kpi-choice">
+                          <label><input type="radio" name={`target-${kpi.id}`} checked={kpi.targetMode !== "range"} onChange={() => patchKpi(kpi.id, { targetMode: "fixed" })} /> Fixed value</label>
+                          <label><input type="radio" name={`target-${kpi.id}`} checked={kpi.targetMode === "range"} onChange={() => patchKpi(kpi.id, { targetMode: "range" })} /> Range value</label>
+                        </div>
+                        {kpi.targetMode === "range" ? (
+                          <div className="kpi-range">
+                            <input aria-label="Minimum" inputMode="decimal" placeholder="Min" value={kpi.targetMin ?? ""} onChange={(event) => patchKpi(kpi.id, { targetMin: event.target.value })} />
+                            <input aria-label="Maximum" inputMode="decimal" placeholder="Max" value={kpi.targetMax ?? ""} onChange={(event) => patchKpi(kpi.id, { targetMax: event.target.value })} />
+                          </div>
+                        ) : <input aria-label="Fixed value" inputMode="decimal" placeholder="56" value={kpi.target} onChange={(event) => patchKpi(kpi.id, { target: event.target.value })} />}
+                      </div>
+                    </td>
                     <td><input aria-label="Reporting frequency" value={kpi.frequency} onChange={(event) => patchKpi(kpi.id, { frequency: event.target.value })} /></td>
                     <td>
                       <select aria-label="Applicable activity" value={kpi.activityId} onChange={(event) => patchKpi(kpi.id, { activityId: event.target.value })}>
@@ -760,10 +791,28 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                       </select>
                     </td>
                     <td>
-                      <div className="upload compact">
-                        <img src="/images/UploadSimple.svg" alt="" />
-                        <span><strong>{kpi.evidence || "Upload file"}</strong></span>
-                        <input type="file" accept="image/*,.pdf" onChange={(event) => patchKpi(kpi.id, { evidence: event.target.files?.[0]?.name ?? "" })} />
+                      <div className="kpi-evidence-cell">
+                        <div className="choice-row kpi-choice">
+                          <label><input type="radio" name={`evidence-${kpi.id}`} checked={Boolean(kpi.evidenceRequired)} onChange={() => patchKpi(kpi.id, { evidenceRequired: true, noEvidence: false })} /> Yes</label>
+                          <label><input type="radio" name={`evidence-${kpi.id}`} checked={!kpi.evidenceRequired} onChange={() => patchKpi(kpi.id, { evidenceRequired: false, noEvidence: true, evidence: "", evidenceTypes: [] })} /> No</label>
+                        </div>
+                        {kpi.evidenceRequired ? (
+                          <div className="kpi-file-types">
+                            {kpiFileTypes.map((type) => (
+                              <label key={type.id}>
+                                <input
+                                  type="checkbox"
+                                  checked={kpi.evidenceTypes?.includes(type.id) ?? false}
+                                  onChange={(event) => {
+                                    const current = kpi.evidenceTypes ?? [];
+                                    patchKpi(kpi.id, { evidenceTypes: event.target.checked ? [...current, type.id] : current.filter((item) => item !== type.id) });
+                                  }}
+                                />
+                                {type.label}
+                              </label>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     </td>
                     <td><button className="remove-icon-btn" type="button" aria-label="Remove KPI" onClick={() => patch({ kpis: draft.kpis.filter((item) => item.id !== kpi.id) })}><TrashIcon /></button></td>
