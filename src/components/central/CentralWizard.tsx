@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CentralPreview } from "@/components/central/CentralPreview";
 import { PolygonSketch, square } from "@/components/central/PolygonSketch";
@@ -62,7 +62,6 @@ function validate(draft: CentralProject, step: number) {
     for (const kpi of draft.kpis) {
       if (kpi.source === "custom" && !kpi.templateFile.trim()) return "Upload the KPI template for each custom KPI.";
       if (!kpi.name.trim() || !kpi.unit.trim() || !kpi.baseline.trim() || !kpi.target.trim() || !kpi.frequency || !kpi.activityId) return "Complete every KPI, including the activity it belongs to.";
-      if (!kpi.noEvidence && (!kpi.evidence.trim() || !kpi.evidence.includes("."))) return "Upload a location photo or map for each KPI, or select “No” for evidence.";
       if (!agenciesForActivity(draft, kpi.activityId).length) return `Tag an agency to the activity used by “${kpi.name || "this KPI"}”.`;
     }
   }
@@ -221,6 +220,23 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
     setError("");
   }
 
+  function focusNewRow(rowId: string) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const row = document.getElementById(rowId);
+        row?.scrollIntoView({ behavior: "smooth", block: "center" });
+        row?.querySelector<HTMLInputElement | HTMLSelectElement>("input, select")?.focus();
+      });
+    });
+  }
+
+  function addActivity() {
+    if (!draft) return;
+    const activity = blankActivity();
+    patch({ activities: [...draft.activities, activity] });
+    focusNewRow(`activity-row-${activity.id}`);
+  }
+
   function patchSubActivity(activityId: string, subActivityId: string, partial: Partial<CentralSubActivity>) {
     setDraft((current) => current ? {
       ...current,
@@ -248,6 +264,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
     };
     patchActivity(activityId, { subActivities: [...(activity.subActivities ?? []), subActivity] });
     setSubActivityChoice((current) => ({ ...current, [activityId]: "" }));
+    focusNewRow(`subactivity-row-${subActivity.id}`);
   }
 
   function patchAgency(id: string, partial: Partial<CentralAgencyAssignment>) {
@@ -467,97 +484,130 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
       {step === 2 ? (
         <section className="panel proposal-card">
           <header><h2>Activities & sub-activities</h2><p>Organize the project into activities and deliverable sub-activities. Reference options follow the activity matrix for this project type; custom entries are also supported.</p></header>
-          {draft.activities.map((activity, index) => {
-            const reference = matrixActivities.find((item) => item.code === activity.matrixCode);
-            const selectedSubActivities = new Set((activity.subActivities ?? []).map((item) => item.matrixCode).filter(Boolean));
-            const selectedSubActivity = subActivityChoice[activity.id] ?? "";
-            return (
-              <article key={activity.id} className="location-card activity-card">
-                <header className="proposal-actions">
-                  <strong>{index + 1}. Activity{activity.matrixCode ? ` · ${activity.matrixCode}` : ""}</strong>
-                  <button className="remove-icon-btn" type="button" aria-label="Remove activity" onClick={() => patch({ activities: draft.activities.filter((item) => item.id !== activity.id) })}><TrashIcon /></button>
-                </header>
-                <div className="form-grid">
-                  {matrixActivities.length ? (
-                    <label className="field span-2"><span>Activity list</span>
-                      <select
-                        value={reference ? activity.matrixCode : "custom"}
-                        onChange={(event) => {
-                          const selected = matrixActivities.find((item) => item.code === event.target.value);
-                          if (!selected) {
-                            patchActivity(activity.id, {
-                              matrixCode: "",
-                              theme: "",
-                              reportingFrequency: "",
-                              subActivities: (activity.subActivities ?? []).map((subActivity) => subActivity.matrixCode
-                                ? { ...subActivity, matrixCode: "", evidence: "", spatialRelevance: "" }
-                                : subActivity),
-                            });
-                            return;
-                          }
-                          const selectedCodes = new Set(selected.subActivities.map((item) => item.code));
-                          patchActivity(activity.id, {
-                            matrixCode: selected.code,
-                            name: selected.name,
-                            description: `${selected.code}: ${selected.name}`,
-                            theme: selected.theme,
-                            reportingFrequency: selected.frequency,
-                            subActivities: (activity.subActivities ?? []).map((subActivity) => subActivity.matrixCode && !selectedCodes.has(subActivity.matrixCode)
-                              ? { ...subActivity, matrixCode: "", evidence: "", spatialRelevance: "" }
-                              : subActivity),
-                          });
-                        }}
-                      >
-                        <option value="custom">Custom activity</option>
-                        {matrixActivities.map((item) => <option key={item.code} value={item.code}>{item.code} · {item.name}</option>)}
-                      </select>
-                    </label>
-                  ) : null}
-                  {!reference ? <label className="field"><span>Activity name</span><input value={activity.name} onChange={(event) => patchActivity(activity.id, { name: event.target.value })} /></label> : null}
-                  <label className="field"><span>Activity-level milestone / target</span><input value={activity.milestone} placeholder="100 ha planted" onChange={(event) => patchActivity(activity.id, { milestone: event.target.value })} /></label>
-                  <label className="field span-2"><span>Activity description</span><textarea rows={2} value={activity.description} onChange={(event) => patchActivity(activity.id, { description: event.target.value })} /></label>
-                  <label className="field"><span>Planned start</span><input type="date" min={draft.start} max={draft.end} value={activity.start} onChange={(event) => patchActivity(activity.id, { start: event.target.value })} /></label>
-                  <label className="field"><span>Planned completion</span><input type="date" min={activity.start || draft.start} max={draft.end} value={activity.end} onChange={(event) => patchActivity(activity.id, { end: event.target.value })} /></label>
-                </div>
-                {reference ? <p className="field-hint activity-matrix-hint">{reference.theme} · Suggested reporting: {reference.frequency}</p> : null}
-
-                <section className="activity-subactivities" aria-label={`Sub-activities for ${activity.name || `activity ${index + 1}`}`}>
-                  <header><h3>Sub-activities</h3><p>Add selected work items or enter a project-specific sub-activity.</p></header>
-                  {reference ? (
-                    <div className="activity-subactivity-add">
-                      <label className="field"><span>Add from matrix</span>
-                        <select value={selectedSubActivity} onChange={(event) => setSubActivityChoice((current) => ({ ...current, [activity.id]: event.target.value }))}>
-                          <option value="">Select a sub-activity</option>
-                          {reference.subActivities.filter((item) => !selectedSubActivities.has(item.code)).map((item) => <option key={item.code} value={item.code}>{item.code} · {item.name}</option>)}
-                        </select>
-                      </label>
-                      <button className="btn-ghost" type="button" disabled={!selectedSubActivity} onClick={() => {
-                        const selected = reference.subActivities.find((item) => item.code === selectedSubActivity);
-                        if (selected) addSubActivity(activity.id, selected);
-                      }}>Add selected</button>
-                    </div>
-                  ) : null}
-                  <button className="btn-ghost activity-custom-add" type="button" onClick={() => addSubActivity(activity.id)}>+ Add custom sub-activity</button>
-                  {(activity.subActivities ?? []).map((subActivity, subIndex) => (
-                    <article key={subActivity.id} className="activity-subactivity-card">
-                      <header className="proposal-actions">
-                        <strong>Sub-activity {subIndex + 1}{subActivity.matrixCode ? ` · ${subActivity.matrixCode}` : " · Custom"}</strong>
-                        <button className="remove-icon-btn" type="button" aria-label="Remove sub-activity" onClick={() => patchActivity(activity.id, { subActivities: (activity.subActivities ?? []).filter((item) => item.id !== subActivity.id) })}><TrashIcon /></button>
-                      </header>
-                      {!subActivity.matrixCode ? <label className="field"><span>Sub-activity name</span><input value={subActivity.name} onChange={(event) => patchSubActivity(activity.id, subActivity.id, { name: event.target.value })} /></label> : <strong className="activity-subactivity-name">{subActivity.name}</strong>}
-                      <div className="form-grid">
-                        <label className="field"><span>Planned start</span><input type="date" min={activity.start || draft.start} max={activity.end || draft.end} value={subActivity.start} onChange={(event) => patchSubActivity(activity.id, subActivity.id, { start: event.target.value })} /></label>
-                        <label className="field"><span>Planned completion</span><input type="date" min={subActivity.start || activity.start || draft.start} max={activity.end || draft.end} value={subActivity.end} onChange={(event) => patchSubActivity(activity.id, subActivity.id, { end: event.target.value })} /></label>
-                        <label className="field span-2"><span>Sub-activity target / milestone</span><input value={subActivity.milestone} placeholder="Enter the measurable output or completion milestone" onChange={(event) => patchSubActivity(activity.id, subActivity.id, { milestone: event.target.value })} /></label>
-                      </div>
-                      {subActivity.matrixCode ? <p className="field-hint">Suggested evidence: {subActivity.evidence || "Not specified"} · Spatial relevance: {subActivity.spatialRelevance || "Not specified"}</p> : null}
-                    </article>
-                  ))}
-                </section>
-              </article>
-            );
-          })}
-          <div className="add-row activities-add-row"><button className="btn-ghost" type="button" onClick={() => patch({ activities: [...draft.activities, blankActivity()] })}>+ Add More</button></div>
+          <div className="table-wrap activity-table-wrap">
+            <table className="proposal-table activity-table">
+              <thead>
+                <tr>
+                  <th>Activity</th>
+                  <th>Milestone / target</th>
+                  <th>Description</th>
+                  <th>Planned start</th>
+                  <th>Planned completion</th>
+                  <th><span className="sr-only">Remove</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {draft.activities.map((activity, index) => {
+                  const reference = matrixActivities.find((item) => item.code === activity.matrixCode);
+                  const selectedSubActivities = new Set((activity.subActivities ?? []).map((item) => item.matrixCode).filter(Boolean));
+                  const selectedSubActivity = subActivityChoice[activity.id] ?? "";
+                  return (
+                    <Fragment key={activity.id}>
+                      <tr id={`activity-row-${activity.id}`}>
+                        <td>
+                          <div className="activity-cell">
+                          {matrixActivities.length ? (
+                            <select
+                              aria-label="Activity list"
+                              value={reference ? activity.matrixCode : "custom"}
+                              onChange={(event) => {
+                                const selected = matrixActivities.find((item) => item.code === event.target.value);
+                                if (!selected) {
+                                  patchActivity(activity.id, {
+                                    matrixCode: "",
+                                    theme: "",
+                                    reportingFrequency: "",
+                                    subActivities: (activity.subActivities ?? []).map((subActivity) => subActivity.matrixCode
+                                      ? { ...subActivity, matrixCode: "", evidence: "", spatialRelevance: "" }
+                                      : subActivity),
+                                  });
+                                  return;
+                                }
+                                const selectedCodes = new Set(selected.subActivities.map((item) => item.code));
+                                patchActivity(activity.id, {
+                                  matrixCode: selected.code,
+                                  name: selected.name,
+                                  description: `${selected.code}: ${selected.name}`,
+                                  theme: selected.theme,
+                                  reportingFrequency: selected.frequency,
+                                  subActivities: (activity.subActivities ?? []).map((subActivity) => subActivity.matrixCode && !selectedCodes.has(subActivity.matrixCode)
+                                    ? { ...subActivity, matrixCode: "", evidence: "", spatialRelevance: "" }
+                                    : subActivity),
+                                });
+                              }}
+                            >
+                              <option value="custom">Custom activity</option>
+                              {matrixActivities.map((item) => <option key={item.code} value={item.code}>{item.code} · {item.name}</option>)}
+                            </select>
+                          ) : null}
+                          {!reference ? <input aria-label="Activity name" placeholder="Activity name" value={activity.name} onChange={(event) => patchActivity(activity.id, { name: event.target.value })} /> : null}
+                          {reference ? <input aria-label="Activity name" value={activity.name} onChange={(event) => patchActivity(activity.id, { name: event.target.value })} /> : null}
+                          {reference ? <p className="field-hint activity-matrix-hint">{reference.theme} · Suggested reporting: {reference.frequency}</p> : null}
+                          </div>
+                        </td>
+                        <td><input aria-label="Milestone / target" value={activity.milestone} placeholder="100 ha planted" onChange={(event) => patchActivity(activity.id, { milestone: event.target.value })} /></td>
+                        <td><textarea aria-label="Description" rows={2} value={activity.description} onChange={(event) => patchActivity(activity.id, { description: event.target.value })} /></td>
+                        <td><input aria-label="Planned start" type="date" min={draft.start} max={draft.end} value={activity.start} onChange={(event) => patchActivity(activity.id, { start: event.target.value })} /></td>
+                        <td><input aria-label="Planned completion" type="date" min={activity.start || draft.start} max={draft.end} value={activity.end} onChange={(event) => patchActivity(activity.id, { end: event.target.value })} /></td>
+                        <td><button className="remove-icon-btn" type="button" aria-label="Remove activity" onClick={() => patch({ activities: draft.activities.filter((item) => item.id !== activity.id) })}><TrashIcon /></button></td>
+                      </tr>
+                      <tr className="activity-subrow">
+                        <td colSpan={6}>
+                          <section className="activity-subactivities" aria-label={`Sub-activities for ${activity.name || `activity ${index + 1}`}`}>
+                            <header><h3>Sub-activities</h3><p>Add selected work items or enter a project-specific sub-activity.</p></header>
+                            {reference ? (
+                              <label className="field activity-subactivity-add"><span>Add from matrix</span>
+                                <select value={selectedSubActivity} onChange={(event) => {
+                                  const code = event.target.value;
+                                  const selected = reference.subActivities.find((item) => item.code === code);
+                                  if (selected) addSubActivity(activity.id, selected);
+                                }}>
+                                  <option value="">Select a sub-activity</option>
+                                  {reference.subActivities.filter((item) => !selectedSubActivities.has(item.code)).map((item) => <option key={item.code} value={item.code}>{item.code} · {item.name}</option>)}
+                                </select>
+                              </label>
+                            ) : null}
+                            <button className="btn-ghost activity-custom-add" type="button" onClick={() => addSubActivity(activity.id)}>+ Add custom sub-activity</button>
+                            {(activity.subActivities ?? []).length ? (
+                              <div className="table-wrap">
+                                <table className="proposal-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Sub-activity</th>
+                                      <th>Planned start</th>
+                                      <th>Planned completion</th>
+                                      <th>Target / milestone</th>
+                                      <th><span className="sr-only">Remove</span></th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {(activity.subActivities ?? []).map((subActivity) => (
+                                      <tr key={subActivity.id} id={`subactivity-row-${subActivity.id}`}>
+                                        <td>
+                                          <div className="subactivity-cell">
+                                          <input aria-label="Sub-activity name" value={subActivity.name} onChange={(event) => patchSubActivity(activity.id, subActivity.id, { name: event.target.value })} />
+                                          </div>
+                                        </td>
+                                        <td><input aria-label="Planned start" type="date" min={activity.start || draft.start} max={activity.end || draft.end} value={subActivity.start} onChange={(event) => patchSubActivity(activity.id, subActivity.id, { start: event.target.value })} /></td>
+                                        <td><input aria-label="Planned completion" type="date" min={subActivity.start || activity.start || draft.start} max={activity.end || draft.end} value={subActivity.end} onChange={(event) => patchSubActivity(activity.id, subActivity.id, { end: event.target.value })} /></td>
+                                        <td><input aria-label="Target / milestone" value={subActivity.milestone} placeholder="Enter the measurable output or completion milestone" onChange={(event) => patchSubActivity(activity.id, subActivity.id, { milestone: event.target.value })} /></td>
+                                        <td><button className="remove-icon-btn" type="button" aria-label="Remove sub-activity" onClick={() => patchActivity(activity.id, { subActivities: (activity.subActivities ?? []).filter((item) => item.id !== subActivity.id) })}><TrashIcon /></button></td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : null}
+                          </section>
+                        </td>
+                      </tr>
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="add-row activities-add-row"><button className="btn-ghost" type="button" onClick={addActivity}>+ Add More</button></div>
         </section>
       ) : null}
 
@@ -651,21 +701,15 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                           {draft.activities.map((activity) => <option key={activity.id} value={activity.id}>{activity.name || "Untitled activity"}</option>)}
                         </select>
                       </label>
-                      <label className="field span-2"><span>Evidence</span>
-                        <div className="choice-row">
-                          <label><input type="checkbox" checked={!kpi.noEvidence} onChange={() => patchKpi(kpi.id, { noEvidence: false })} /> Yes</label>
-                          <label><input type="checkbox" checked={!!kpi.noEvidence} onChange={() => patchKpi(kpi.id, { noEvidence: true, evidence: "" })} /> No</label>
+                      <label className="field span-2"><span>Evidence (optional)</span>
+                        <div className="upload">
+                          <img src="/images/UploadSimple.svg" alt="" />
+                          <span>
+                            <strong>{kpi.evidence || "Upload file"}</strong>
+                            <small>{kpi.evidence ? "Click to replace the file" : "Click to choose a location photo, geo map, or similar file"}</small>
+                          </span>
+                          <input type="file" accept="image/*,.pdf" onChange={(event) => patchKpi(kpi.id, { evidence: event.target.files?.[0]?.name ?? "" })} />
                         </div>
-                        {kpi.noEvidence ? null : (
-                          <div className="upload">
-                            <img src="/images/UploadSimple.svg" alt="" />
-                            <span>
-                              <strong>{kpi.evidence || "Upload file"}</strong>
-                              <small>{kpi.evidence ? "Click to replace the file" : "Click to choose a location photo, geo map, or similar file"}</small>
-                            </span>
-                            <input type="file" accept="image/*,.pdf" onChange={(event) => patchKpi(kpi.id, { evidence: event.target.files?.[0]?.name ?? "" })} />
-                          </div>
-                        )}
                       </label>
                     </div>
                   </>
@@ -697,21 +741,15 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                             {draft.activities.map((activity) => <option key={activity.id} value={activity.id}>{activity.name || "Untitled activity"}</option>)}
                           </select>
                         </label>
-                        <label className="field span-2"><span>Evidence</span>
-                          <div className="choice-row">
-                            <label><input type="checkbox" checked={!kpi.noEvidence} onChange={() => patchKpi(kpi.id, { noEvidence: false })} /> Yes</label>
-                            <label><input type="checkbox" checked={!!kpi.noEvidence} onChange={() => patchKpi(kpi.id, { noEvidence: true, evidence: "" })} /> No</label>
+                        <label className="field span-2"><span>Evidence (optional)</span>
+                          <div className="upload">
+                            <img src="/images/UploadSimple.svg" alt="" />
+                            <span>
+                              <strong>{kpi.evidence || "Upload file"}</strong>
+                              <small>{kpi.evidence ? "Click to replace the file" : "Click to choose a location photo, geo map, or similar file"}</small>
+                            </span>
+                            <input type="file" accept="image/*,.pdf" onChange={(event) => patchKpi(kpi.id, { evidence: event.target.files?.[0]?.name ?? "" })} />
                           </div>
-                          {kpi.noEvidence ? null : (
-                            <div className="upload">
-                              <img src="/images/UploadSimple.svg" alt="" />
-                              <span>
-                                <strong>{kpi.evidence || "Upload file"}</strong>
-                                <small>{kpi.evidence ? "Click to replace the file" : "Click to choose a location photo, geo map, or similar file"}</small>
-                              </span>
-                              <input type="file" accept="image/*,.pdf" onChange={(event) => patchKpi(kpi.id, { evidence: event.target.files?.[0]?.name ?? "" })} />
-                            </div>
-                          )}
                         </label>
                       </div>
                     ) : null}
