@@ -275,6 +275,13 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
     setDraft((current) => current ? { ...current, kpis: current.kpis.map((item) => item.id === id ? { ...item, ...partial } : item) } : current);
   }
 
+  function addKpi() {
+    if (!draft) return;
+    const kpi = blankKpi(draft.activities[0]?.id ?? "");
+    patch({ kpis: [...draft.kpis, kpi] });
+    focusNewRow(`kpi-row-${kpi.id}`);
+  }
+
   async function importCustomKpis(id: string, file: File | undefined) {
     if (!file || !draft) return;
     setError("");
@@ -672,92 +679,73 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
           <header><h2>KPI configuration</h2><p>Choose a standard KPI and upload a location photo, or upload a custom KPI template.</p></header>
           {draft.kpis.length === 0 ? (
             <EmptyState title="No KPIs added yet" message="Add standard or custom indicators to track this project's progress." />
-          ) : null}
-          {draft.kpis.map((kpi) => (
-              <article key={kpi.id} className="location-card kpi-card">
-                <header className="proposal-actions">
-                  <div className="choice-row">
-                    <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "standard"} onChange={() => { const { evidence: _evidence, ...fields } = standardKpis[0]; patchKpi(kpi.id, { source: "standard", ...fields }); }} /> Standard KPI</label>
-                    <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "custom"} onChange={() => patchKpi(kpi.id, { source: "custom", templateFile: "", name: "", unit: "", baseline: "", target: "", frequency: "", activityId: "", evidence: "", noEvidence: false })} /> Custom KPI</label>
-                  </div>
-                  <button className="remove-icon-btn" type="button" aria-label="Remove KPI" onClick={() => patch({ kpis: draft.kpis.filter((item) => item.id !== kpi.id) })}><TrashIcon /></button>
-                </header>
-                {kpi.source === "standard" ? (
-                  <>
-                    <label className="field"><span>KPI master</span>
-                      <select value={kpi.name} onChange={(event) => { const found = standardKpis.find((item) => item.name === event.target.value) ?? standardKpis[0]; const { evidence: _evidence, ...fields } = found; patchKpi(kpi.id, fields); }}>
-                        {standardKpis.map((item) => <option key={item.name}>{item.name}</option>)}
-                      </select>
-                    </label>
-                    <div className="form-grid">
-                      <label className="field"><span>KPI</span><input value={kpi.name} onChange={(event) => patchKpi(kpi.id, { name: event.target.value })} /></label>
-                      <label className="field"><span>Unit of measurement</span><input value={kpi.unit} onChange={(event) => patchKpi(kpi.id, { unit: event.target.value })} /></label>
-                      <label className="field"><span>Baseline</span><input value={kpi.baseline} onChange={(event) => patchKpi(kpi.id, { baseline: event.target.value })} /></label>
-                      <label className="field"><span>Target</span><input value={kpi.target} onChange={(event) => patchKpi(kpi.id, { target: event.target.value })} /></label>
-                      <label className="field"><span>Reporting frequency</span><input value={kpi.frequency} onChange={(event) => patchKpi(kpi.id, { frequency: event.target.value })} /></label>
-                      <label className="field"><span>Applicable activity</span>
-                        <select value={kpi.activityId} onChange={(event) => patchKpi(kpi.id, { activityId: event.target.value })}>
-                          <option value="">Select</option>
-                          {draft.activities.map((activity) => <option key={activity.id} value={activity.id}>{activity.name || "Untitled activity"}</option>)}
-                        </select>
-                      </label>
-                      <label className="field span-2"><span>Evidence (optional)</span>
-                        <div className="upload">
-                          <img src="/images/UploadSimple.svg" alt="" />
-                          <span>
-                            <strong>{kpi.evidence || "Upload file"}</strong>
-                            <small>{kpi.evidence ? "Click to replace the file" : "Click to choose a location photo, geo map, or similar file"}</small>
-                          </span>
-                          <input type="file" accept="image/*,.pdf" onChange={(event) => patchKpi(kpi.id, { evidence: event.target.files?.[0]?.name ?? "" })} />
+          ) : (
+          <div className="table-wrap kpi-table-wrap">
+            <table className="proposal-table kpi-table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>KPI</th>
+                  <th>Unit of measurement</th>
+                  <th>Baseline</th>
+                  <th>Target</th>
+                  <th>Reporting frequency</th>
+                  <th>Applicable activity</th>
+                  <th>Evidence (optional)</th>
+                  <th><span className="sr-only">Remove</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {draft.kpis.map((kpi) => (
+                  <tr key={kpi.id} id={`kpi-row-${kpi.id}`}>
+                    <td>
+                      <div className="kpi-source-cell">
+                        <div className="choice-row">
+                          <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "standard"} onChange={() => { const { evidence: _evidence, ...fields } = standardKpis[0]; patchKpi(kpi.id, { source: "standard", ...fields }); }} /> Standard</label>
+                          <label><input type="radio" name={`src-${kpi.id}`} checked={kpi.source === "custom"} onChange={() => patchKpi(kpi.id, { source: "custom", templateFile: "", name: "", unit: "", baseline: "", target: "", frequency: "", activityId: "", evidence: "", noEvidence: false })} /> Custom</label>
                         </div>
-                      </label>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="kpi-template-actions">
-                      <button className="btn-ghost" type="button" onClick={() => void downloadKpiTemplate(draft.activities)}>Download Excel template</button>
-                    </div>
-                    <label className="field"><span>Upload filled template</span>
-                      <div className="upload">
-                        <img src="/images/UploadSimple.svg" alt="" />
-                        <span>
-                          <strong>{kpi.templateFile || "Upload Excel"}</strong>
-                          <small>{kpi.templateFile ? "Click to replace the workbook. Each row becomes a KPI." : "Use the template. Each row is imported as its own KPI."}</small>
-                        </span>
-                        <input type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" onChange={(event) => { void importCustomKpis(kpi.id, event.target.files?.[0]); event.currentTarget.value = ""; }} />
-                      </div>
-                    </label>
-                    {kpi.templateFile ? (
-                      <div className="form-grid">
-                        <label className="field"><span>KPI</span><input value={kpi.name} onChange={(event) => patchKpi(kpi.id, { name: event.target.value })} /></label>
-                        <label className="field"><span>Unit of measurement</span><input value={kpi.unit} onChange={(event) => patchKpi(kpi.id, { unit: event.target.value })} /></label>
-                        <label className="field"><span>Baseline</span><input value={kpi.baseline} onChange={(event) => patchKpi(kpi.id, { baseline: event.target.value })} /></label>
-                        <label className="field"><span>Target</span><input value={kpi.target} onChange={(event) => patchKpi(kpi.id, { target: event.target.value })} /></label>
-                        <label className="field"><span>Reporting frequency</span><input value={kpi.frequency} onChange={(event) => patchKpi(kpi.id, { frequency: event.target.value })} /></label>
-                        <label className="field"><span>Applicable activity</span>
-                          <select value={kpi.activityId} onChange={(event) => patchKpi(kpi.id, { activityId: event.target.value })}>
-                            <option value="">Select</option>
-                            {draft.activities.map((activity) => <option key={activity.id} value={activity.id}>{activity.name || "Untitled activity"}</option>)}
+                        {kpi.source === "standard" ? (
+                          <select aria-label="KPI master" value={kpi.name} onChange={(event) => { const found = standardKpis.find((item) => item.name === event.target.value) ?? standardKpis[0]; const { evidence: _evidence, ...fields } = found; patchKpi(kpi.id, fields); }}>
+                            {standardKpis.map((item) => <option key={item.name}>{item.name}</option>)}
                           </select>
-                        </label>
-                        <label className="field span-2"><span>Evidence (optional)</span>
-                          <div className="upload">
-                            <img src="/images/UploadSimple.svg" alt="" />
-                            <span>
-                              <strong>{kpi.evidence || "Upload file"}</strong>
-                              <small>{kpi.evidence ? "Click to replace the file" : "Click to choose a location photo, geo map, or similar file"}</small>
-                            </span>
-                            <input type="file" accept="image/*,.pdf" onChange={(event) => patchKpi(kpi.id, { evidence: event.target.files?.[0]?.name ?? "" })} />
-                          </div>
-                        </label>
+                        ) : (
+                          <>
+                            <button className="btn-ghost small kpi-template-download" type="button" onClick={() => void downloadKpiTemplate(draft.activities)}>Download template</button>
+                            <div className="upload compact">
+                              <img src="/images/UploadSimple.svg" alt="" />
+                              <span><strong>{kpi.templateFile || "Upload filled Excel"}</strong></span>
+                              <input type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" onChange={(event) => { void importCustomKpis(kpi.id, event.target.files?.[0]); event.currentTarget.value = ""; }} />
+                            </div>
+                          </>
+                        )}
                       </div>
-                    ) : null}
-                  </>
-                )}
-              </article>
-          ))}
-          <div className="add-row kpis-add-row"><button className="btn-ghost" type="button" onClick={() => patch({ kpis: [...draft.kpis, blankKpi(draft.activities[0]?.id ?? "")] })}>+ Add More</button></div>
+                    </td>
+                    <td><input aria-label="KPI" value={kpi.name} onChange={(event) => patchKpi(kpi.id, { name: event.target.value })} /></td>
+                    <td><input aria-label="Unit of measurement" value={kpi.unit} onChange={(event) => patchKpi(kpi.id, { unit: event.target.value })} /></td>
+                    <td><input aria-label="Baseline" value={kpi.baseline} onChange={(event) => patchKpi(kpi.id, { baseline: event.target.value })} /></td>
+                    <td><input aria-label="Target" value={kpi.target} onChange={(event) => patchKpi(kpi.id, { target: event.target.value })} /></td>
+                    <td><input aria-label="Reporting frequency" value={kpi.frequency} onChange={(event) => patchKpi(kpi.id, { frequency: event.target.value })} /></td>
+                    <td>
+                      <select aria-label="Applicable activity" value={kpi.activityId} onChange={(event) => patchKpi(kpi.id, { activityId: event.target.value })}>
+                        <option value="">Select</option>
+                        {draft.activities.map((activity) => <option key={activity.id} value={activity.id}>{activity.name || "Untitled activity"}</option>)}
+                      </select>
+                    </td>
+                    <td>
+                      <div className="upload compact">
+                        <img src="/images/UploadSimple.svg" alt="" />
+                        <span><strong>{kpi.evidence || "Upload file"}</strong></span>
+                        <input type="file" accept="image/*,.pdf" onChange={(event) => patchKpi(kpi.id, { evidence: event.target.files?.[0]?.name ?? "" })} />
+                      </div>
+                    </td>
+                    <td><button className="remove-icon-btn" type="button" aria-label="Remove KPI" onClick={() => patch({ kpis: draft.kpis.filter((item) => item.id !== kpi.id) })}><TrashIcon /></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          )}
+          <div className="add-row kpis-add-row"><button className="btn-ghost" type="button" onClick={addKpi}>+ Add More</button></div>
         </section>
       ) : null}
 
