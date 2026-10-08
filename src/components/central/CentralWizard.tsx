@@ -75,7 +75,7 @@ function validate(draft: CentralProject, step: number) {
   return "";
 }
 
-function ChipMultiSelect({ label, placeholder, emptyText, options, selectedIds, onChange }: { label: string; placeholder: string; emptyText: string; options: { id: string; name: string }[]; selectedIds: string[]; onChange: (ids: string[]) => void }) {
+function ChipMultiSelect({ label, required, placeholder, emptyText, options, selectedIds, onChange }: { label: string; required?: boolean; placeholder: string; emptyText: string; options: { id: string; name: string }[]; selectedIds: string[]; onChange: (ids: string[]) => void }) {
   const root = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const chosen = options.filter((option) => selectedIds.includes(option.id));
@@ -91,7 +91,7 @@ function ChipMultiSelect({ label, placeholder, emptyText, options, selectedIds, 
 
   return (
     <div className="field combo" ref={root}>
-      <span>{label}</span>
+      <span>{label}{required ? <span className="req"> *</span> : null}</span>
       <div className={`multi-select${chosen.length ? "" : " is-empty"}`} role="button" tabIndex={0} aria-expanded={open} aria-haspopup="listbox" onClick={() => setOpen((current) => !current)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setOpen((current) => !current); } }}>
         {chosen.length ? chosen.map((option) => (
           <span key={option.id} className="multi-chip">
@@ -126,7 +126,7 @@ function AgencyNameField({ type, agencyId, onSelect }: { type: string; agencyId:
 
   return (
     <label className="field combo">
-      <span>Agency name</span>
+      <span>Agency name<span className="req"> *</span></span>
       <input
         role="combobox"
         aria-expanded={open}
@@ -405,7 +405,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
         <section className="panel proposal-card">
           <header><h2>Project details</h2></header>
           <div className="form-grid">
-            <label className="field span-2"><span>Project name</span><input value={draft.name} onChange={(event) => patch({ name: event.target.value })} /></label>
+            <label className="field span-2"><span>Project name<span className="req"> *</span></span><input value={draft.name} onChange={(event) => patch({ name: event.target.value })} /></label>
             <label className="field span-2"><span>Project type / NCM component</span>
               <select value={draft.component} onChange={(event) => {
                 const component = event.target.value;
@@ -428,9 +428,9 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                 });
               }}>{ncmComponents.map((item) => <option key={item}>{item}</option>)}</select>
             </label>
-            <label className="field span-2"><span>Project description</span><textarea rows={3} value={draft.description} onChange={(event) => patch({ description: event.target.value })} /></label>
-            <label className="field"><span>Start date</span><input type="date" value={draft.start} onChange={(event) => patch({ start: event.target.value })} /></label>
-            <label className="field"><span>End date</span><input type="date" value={draft.end} onChange={(event) => patch({ end: event.target.value })} /></label>
+            <label className="field span-2"><span>Project description<span className="req"> *</span></span><textarea rows={3} value={draft.description} onChange={(event) => patch({ description: event.target.value })} /></label>
+            <label className="field"><span>Start date<span className="req"> *</span></span><input type="date" value={draft.start} onChange={(event) => patch({ start: event.target.value })} /></label>
+            <label className="field"><span>End date<span className="req"> *</span></span><input type="date" value={draft.end} onChange={(event) => patch({ end: event.target.value })} /></label>
           </div>
           <h2 className="proposal-section-heading">Add Location</h2>
           <p className="field-hint">One project can run at several sites. Pick each site, then draw its boundary on the map.</p>
@@ -446,13 +446,13 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
               <article key={location.id} className="location-card site-card">
                 <header className="proposal-actions"><strong>{index + 1}. Location</strong><button className="remove-icon-btn" type="button" aria-label="Remove location" onClick={() => patch({ locations: draft.locations.filter((item) => item.id !== location.id) })}><TrashIcon /></button></header>
                 <div className="form-grid">
-                  <label className="field"><span>State / UT</span>
+                  <label className="field"><span>State / UT<span className="req"> *</span></span>
                     <select value={location.state} onChange={(event) => patchLocation(location.id, { state: event.target.value, district: "", site: "" })}>
                       <option value="">Select</option>
                       {states.map((item) => <option key={item.value}>{item.label}</option>)}
                     </select>
                   </label>
-                  <label className="field"><span>District</span>
+                  <label className="field"><span>District<span className="req"> *</span></span>
                     <select
                       value={location.district}
                       onChange={(event) => {
@@ -471,7 +471,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                       {districts.map((item) => <option key={item.value}>{item.label}</option>)}
                     </select>
                   </label>
-                  <label className="field span-2"><span>Site / location</span>
+                  <label className="field span-2"><span>Site / location<span className="req"> *</span></span>
                     <select
                       value={location.site}
                       disabled={!district}
@@ -505,9 +505,9 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
           <h2 className="proposal-section-heading">Funding details</h2>
           <div className="form-grid">
             <label className="field"><span>Funding source</span><input value={draft.fundingSource} placeholder="NCM 2.0 central share" onChange={(event) => patch({ fundingSource: event.target.value })} /></label>
-            <label className="field"><span>Sanctioned amount (₹ in lakhs)</span><input value={draft.sanctioned} placeholder="e.g. 150" onChange={(event) => patch({ sanctioned: event.target.value })} /></label>
+            <label className="field"><span>Sanctioned amount (₹ in lakhs)<span className="req"> *</span></span><input value={draft.sanctioned} placeholder="e.g. 150" onChange={(event) => patch({ sanctioned: event.target.value })} /></label>
             <label className="field"><span>Financial year</span><select value={draft.financialYear} onChange={(event) => patch({ financialYear: event.target.value })}>{financialYears.map((item) => <option key={item}>{item}</option>)}</select></label>
-            <label className="field span-2"><span>Fund allocation / release details</span><textarea rows={2} value={draft.releaseDetails} onChange={(event) => patch({ releaseDetails: event.target.value })} /></label>
+            <label className="field span-2"><span>Fund allocation / release details<span className="req"> *</span></span><textarea rows={2} value={draft.releaseDetails} onChange={(event) => patch({ releaseDetails: event.target.value })} /></label>
             <label className="field span-2"><span>Supporting document (optional)</span>
               <div className="upload">
                 <img src="/images/UploadSimple.svg" alt="" />
@@ -529,11 +529,11 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
             <table className="proposal-table activity-table">
               <thead>
                 <tr>
-                  <th>Activity</th>
-                  <th>Milestone / target</th>
-                  <th>Description</th>
-                  <th>Planned start</th>
-                  <th>Planned completion</th>
+                  <th>Activity<span className="req"> *</span></th>
+                  <th>Milestone / target<span className="req"> *</span></th>
+                  <th>Description<span className="req"> *</span></th>
+                  <th>Planned start<span className="req"> *</span></th>
+                  <th>Planned completion<span className="req"> *</span></th>
                   <th><span className="sr-only">Remove</span></th>
                 </tr>
               </thead>
@@ -614,10 +614,10 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                                 <table className="proposal-table">
                                   <thead>
                                     <tr>
-                                      <th>Sub-activity</th>
-                                      <th>Planned start</th>
-                                      <th>Planned completion</th>
-                                      <th>Target / milestone</th>
+                                      <th>Sub-activity<span className="req"> *</span></th>
+                                      <th>Planned start<span className="req"> *</span></th>
+                                      <th>Planned completion<span className="req"> *</span></th>
+                                      <th>Target / milestone<span className="req"> *</span></th>
                                       <th><span className="sr-only">Remove</span></th>
                                     </tr>
                                   </thead>
@@ -667,7 +667,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
               <article key={assignment.id} className="agency-card">
                 <header className="proposal-actions"><strong>Agency</strong><button className="remove-icon-btn" type="button" aria-label="Remove agency" onClick={() => patch({ agencies: draft.agencies.filter((item) => item.id !== assignment.id) })}><TrashIcon /></button></header>
                 <div className="form-grid">
-                  <label className="field"><span>Agency type</span>
+                  <label className="field"><span>Agency type<span className="req"> *</span></span>
                     <select value={type} onChange={(event) => {
                       const next = event.target.value;
                       setAgencyType((current) => ({ ...current, [assignment.id]: next }));
@@ -689,6 +689,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                 ) : null}
                 <ChipMultiSelect
                   label="Tagged locations"
+                  required
                   placeholder="Select locations"
                   emptyText="No locations added"
                   options={draft.locations.map((location) => ({ id: location.id, name: locationLabel(location) }))}
@@ -697,6 +698,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
                 />
                 <ChipMultiSelect
                   label="Tagged activities"
+                  required
                   placeholder="Select activities"
                   emptyText="No activities added"
                   options={draft.activities.map((activity) => ({ id: activity.id, name: activity.name || "Untitled activity" }))}
