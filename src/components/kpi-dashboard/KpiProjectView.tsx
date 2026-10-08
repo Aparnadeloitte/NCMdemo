@@ -224,7 +224,7 @@ function Kpis({ project, page, onPage, open, onOpen }: { project: DashProject; p
           { key: "subActivity", header: "Sub-activity", render: (row) => row.group },
           { key: "location", header: "Location", render: (row) => locationById(project, row.locationId)?.name ?? "" },
           { key: "agency", header: "Agency", render: (row) => row.agency },
-          { key: "target", header: "Target", render: (row) => formatMeasure(row.target, row.unit) },
+          { key: "target", header: "Target", render: (row) => row.targetLabel || formatMeasure(row.target, row.unit) },
           { key: "achievement", header: "Achievement", render: (row) => row.reported === false ? "Not reported" : formatMeasure(row.achievement, row.unit) },
           { key: "status", header: "Verification", render: (row) => <span className={`kdash-pill ${row.status.toLowerCase()}`}>{row.status}</span> },
           { key: "attachment", header: "Attachment", render: (row) => <button type="button" className="view-icon-btn" aria-label={`View attachment for ${row.name}`} title={row.evidence} onClick={() => onOpen(row.id === open?.id ? "" : row.id)}><AttachmentIcon /></button> },

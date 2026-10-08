@@ -329,7 +329,7 @@ export function KpiDashboardScreen() {
                     <tr key={kpi.id}>
                       <td>{project.name}</td>
                       <td>{kpi.name}</td>
-                      <td>{formatMeasure(kpi.target, kpi.unit)}</td>
+                      <td>{kpi.targetLabel || formatMeasure(kpi.target, kpi.unit)}</td>
                       <td>{kpi.reported === false ? "Not reported" : formatMeasure(kpi.achievement, kpi.unit)}</td>
                       <td>{kpi.reported === false ? "—" : `${kpiPercent(kpi)}%`}</td>
                     </tr>

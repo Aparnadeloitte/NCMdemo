@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CentralPreview } from "@/components/central/CentralPreview";
 import { CentralWizard } from "@/components/central/CentralWizard";
-import { agenciesForActivity, agencyById, locationLabel } from "@/data/central";
+import { agenciesForActivity, agencyById, fileMatchesKpiTypes, kpiEvidenceRequired, kpiEvidenceTypes, kpiFileAccept, kpiTargetBounds, kpiTargetText, locationLabel } from "@/data/central";
 import { getSession } from "@/lib/session";
 import { addCentralProjectFeedback, assignmentsForUser, getCentralProject, listAgencyCentralProjects, listApprovedCentralProjects, listOwnCentralProjects, listReviewCentralProjects, listSubmittedKpiReports, reportId, reportsForProject, reviewCentralProject, reviewKpiReport, upsertKpiReports } from "@/services/central-projects.service";
 import type { CentralProject, KpiReport } from "@/types/domain";
@@ -234,17 +234,23 @@ function isPhotoFile(file: File) {
   return file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp|heic|heif)$/i.test(file.name);
 }
 
-function EvidencePicker({ documents, photos, onChange }: { documents: string[]; photos: string[]; onChange: (next: { documents: string[]; photos: string[] }) => void }) {
+function EvidencePicker({ documents, photos, acceptTypes, onChange, onReject }: { documents: string[]; photos: string[]; acceptTypes: string[]; onChange: (next: { documents: string[]; photos: string[] }) => void; onReject: (message: string) => void }) {
   function add(list: FileList | null) {
     if (!list?.length) return;
     const nextDocs = [...documents];
     const nextPhotos = [...photos];
+    const rejected: string[] = [];
     Array.from(list).forEach((file) => {
+      if (!fileMatchesKpiTypes(file, acceptTypes)) {
+        rejected.push(file.name);
+        return;
+      }
       if (isPhotoFile(file)) {
         if (!nextPhotos.includes(file.name)) nextPhotos.push(file.name);
       } else if (!nextDocs.includes(file.name)) nextDocs.push(file.name);
     });
     onChange({ documents: nextDocs, photos: nextPhotos });
+    if (rejected.length) onReject(`Only the file types selected for this KPI are allowed. Rejected: ${rejected.join(", ")}.`);
   }
   const files = [
     ...documents.map((name) => ({ name, kind: "document" as const })),
@@ -268,10 +274,10 @@ function EvidencePicker({ documents, photos, onChange }: { documents: string[]; 
           ))}
         </ul>
       ) : null}
-      <input aria-label="Evidence file" type="file" multiple onChange={(event) => { add(event.target.files); event.currentTarget.value = ""; }} />
+      <input aria-label="Evidence file" type="file" multiple accept={kpiFileAccept(acceptTypes)} onChange={(event) => { add(event.target.files); event.currentTarget.value = ""; }} />
       <label className="text-link kpi-add">
         Add more
-        <input aria-label="Add more evidence" type="file" multiple onChange={(event) => { add(event.target.files); event.currentTarget.value = ""; }} />
+        <input aria-label="Add more evidence" type="file" multiple accept={kpiFileAccept(acceptTypes)} onChange={(event) => { add(event.target.files); event.currentTarget.value = ""; }} />
       </label>
     </div>
   );
@@ -297,6 +303,10 @@ export function AgencyWorkspace({ projectId }: { projectId: string }) {
   async function save(status: "draft" | "submitted") {
     const editableRows = rows.filter((row) => row.status === "draft" || row.status === "returned");
     if (status === "submitted" && editableRows.some((row) => !row.achievement.trim())) { setError("Enter an achievement for every KPI row before submitting."); return; }
+    if (status === "submitted" && editableRows.some((row) => {
+      const kpi = currentProject.kpis.find((item) => item.id === row.kpiId);
+      return Boolean(kpi && kpiEvidenceRequired(kpi) && row.documents.length + row.photos.length === 0);
+    })) { setError("Upload the required evidence file for every KPI that needs it."); return; }
     setPending(status);
     setError("");
     try {
@@ -326,14 +336,14 @@ export function AgencyWorkspace({ projectId }: { projectId: string }) {
                     <td>{kpi?.name}<span className="cell-sub">{agencyById(row.agencyId)?.name}</span></td>
                     <td>{location ? locationLabel(location) : "—"}</td>
                     <td>{activity?.name}</td>
-                    <td>{kpi?.target}</td>
+                    <td>{kpi ? [kpiTargetText(kpi), kpi.unit].filter(Boolean).join(" ") : "—"}</td>
                     <td>{locked ? row.achievement : <input aria-label="Achievement" value={row.achievement} onChange={(event) => patchRow(row.id, { achievement: event.target.value })} />}</td>
                     <td><Badge status={row.status} />{row.reviewNote ? <span className="cell-sub">{row.reviewNote}</span> : null}</td>
                     <td>
-                      {locked ? <span>{[...row.documents, ...row.photos].join(", ") || "—"}</span> : (
+                      {locked ? <span>{kpi && !kpiEvidenceRequired(kpi) ? "Not required" : [...row.documents, ...row.photos].join(", ") || "—"}</span> : (
                         <>
                           <input aria-label="Remarks" placeholder="Remarks" value={row.remarks} onChange={(event) => patchRow(row.id, { remarks: event.target.value })} />
-                          <EvidencePicker documents={row.documents} photos={row.photos} onChange={(next) => patchRow(row.id, next)} />
+                          {kpi && kpiEvidenceRequired(kpi) ? <EvidencePicker documents={row.documents} photos={row.photos} acceptTypes={kpiEvidenceTypes(kpi)} onChange={(next) => patchRow(row.id, next)} onReject={setError} /> : null}
                         </>
                       )}
                     </td>
@@ -360,21 +370,22 @@ function aiChecks(report: KpiReport, project: CentralProject) {
   const kpi = project.kpis.find((item) => item.id === report.kpiId);
   const location = project.locations.find((item) => item.id === report.locationId);
   const achievement = Number(report.achievement.match(/[\d.]+/)?.[0] ?? "");
-  const target = Number(kpi?.target.match(/[\d.]+/)?.[0] ?? "");
+  const bounds = kpi ? kpiTargetBounds(kpi) : { min: Number.NaN, max: Number.NaN };
   const prior = report.history.slice(0, -1);
+  const evidenceNeeded = Boolean(kpi && kpiEvidenceRequired(kpi));
   const hasEvidence = report.documents.length > 0 || report.photos.length > 0;
   const hasAchievement = report.achievement.trim().length > 0;
   const duplicate = prior.some((item) => item.achievement === report.achievement);
-  const comparable = Number.isFinite(achievement) && Number.isFinite(target);
-  const anomalous = comparable && target > 0 && achievement > target * 1.5;
+  const comparable = Number.isFinite(achievement) && Number.isFinite(bounds.max);
+  const anomalous = comparable && bounds.max > 0 && (achievement > bounds.max * 1.5 || (kpi?.targetMode === "range" && Number.isFinite(bounds.min) && achievement < bounds.min));
   const linked = agenciesForActivity(project, kpi?.activityId ?? "").length > 0;
   const openBoundary = Boolean(location?.polygon.some((ring) => ring.length > 0) && !location.polygon.some((ring) => ring.length >= 3));
   return [
     { label: "Evidence attached", detail: hasEvidence ? "A document or geo-tagged photo is attached to this submission." : "No document or geo-tagged photo is attached.", warn: !hasEvidence },
     { label: "Achievement reported", detail: hasAchievement ? "An achievement value is present for this KPI." : "The achievement field is blank.", warn: !hasAchievement },
     { label: "Duplicate check", detail: duplicate ? "This achievement matches an earlier submission for the same KPI." : "This achievement does not match an earlier submission.", warn: duplicate },
-    { label: "Target comparison", detail: comparable ? `Reported ${achievement} against the approved target of ${target}.` : "The achievement or target is not a number, so the variance cannot be calculated.", warn: false },
-    { label: "Value range", detail: anomalous ? "The reported value is more than 50% above the approved target." : "No unusual spike against the approved target.", warn: anomalous },
+    { label: "Target comparison", detail: comparable ? `Reported ${achievement} against the approved target of ${kpi ? kpiTargetText(kpi) : "—"}.` : "The achievement or target is not a number, so the variance cannot be calculated.", warn: false },
+    { label: "Value range", detail: anomalous ? "The reported value is outside the approved target." : "The reported value sits within the approved target.", warn: anomalous },
     { label: "Activity and agency link", detail: linked ? "This KPI is linked to an activity and an implementing agency." : "This KPI is not linked to an implementing agency.", warn: !linked },
     { label: "Location consistency", detail: openBoundary ? "A location boundary is drawn, but it is not closed." : "The reported location is linked to this KPI.", warn: openBoundary },
   ];
@@ -441,7 +452,7 @@ export function KpiReviewDetail({ reportId: id }: { reportId: string }) {
         <dl className="review-facts">
           <div><dt>Project</dt><dd>{project.name}</dd></div>
           <div><dt>KPI</dt><dd>{kpi?.name}</dd></div>
-          <div><dt>Approved target</dt><dd>{kpi?.target} {kpi?.unit}</dd></div>
+          <div><dt>Approved target</dt><dd>{kpi ? `${kpiTargetText(kpi)} ${kpi.unit}` : "—"}</dd></div>
           <div><dt>Frequency</dt><dd>{kpi?.frequency}</dd></div>
           <div><dt>Reported achievement</dt><dd>{report.achievement}</dd></div>
           <div><dt>Activity</dt><dd>{activity?.name}</dd></div>

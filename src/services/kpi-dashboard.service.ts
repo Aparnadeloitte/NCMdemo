@@ -1,4 +1,4 @@
-import { agencyById } from "@/data/central";
+import { agencyById, kpiEvidenceLabel, kpiTargetBounds, kpiTargetText } from "@/data/central";
 import { districtCentroid, districtsByState, stateCentroids, states } from "@/data/options";
 import { seedProjects } from "@/data/projects";
 import type { DashKpi, DashLocation, DashProject } from "@/data/kpi-dashboard";
@@ -95,20 +95,22 @@ function centralKpis(project: CentralProject, locations: DashLocation[], reports
         .map((assignment) => agencyById(assignment.agencyId)?.name ?? "Implementing agency");
       const agencyNames = [...new Set([...assignedAgencies, ...submitted.map((report) => agencyById(report.agencyId)?.name ?? "Implementing agency")])];
       const activity = project.activities.find((item) => item.id === kpi.activityId);
+      const bounds = kpiTargetBounds(kpi);
       return [{
         id: `${project.id}:${kpi.id}:${locationId}`,
         name: kpi.name,
         group: "Project KPIs",
         definition: kpi.name,
         unit: kpi.unit || "",
-        target: numberValue(kpi.target),
+        target: Number.isFinite(bounds.max) ? bounds.max : 0,
+        targetLabel: [kpiTargetText(kpi), kpi.unit].filter(Boolean).join(" "),
         achievement: reportedValues.length ? reportedValues.reduce((sum, value) => sum + value, 0) / reportedValues.length : 0,
         reported: submitted.length > 0,
         status: submitted.length ? reportStatus(submitted) : "Pending",
         activity: activity?.name ?? "Project activity",
         locationId,
         agency: agencyNames.join(", "),
-        evidence: submitted.flatMap((report) => [...report.documents, ...report.photos]).join(", ") || kpi.evidence,
+        evidence: submitted.flatMap((report) => [...report.documents, ...report.photos]).join(", ") || kpiEvidenceLabel(kpi),
         remarks: submitted.map((report) => report.remarks).filter(Boolean).join("; "),
         ai: "",
         review: submitted.map((report) => report.reviewNote).filter(Boolean).join("; "),

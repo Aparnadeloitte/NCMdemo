@@ -19,6 +19,58 @@ export const fundingSources = ["NCM 2.0 central share", "State share", "CAMPA", 
 export const financialYears = ["2025-26", "2026-27", "2027-28", "2028-29"];
 export const evidenceOptions = ["Geo-photo", "Before & After Photos", "Survey", "Report", "UC/PFMS", "Lab result"];
 
+export const kpiFileTypes = [
+  { id: "pdf", label: "PDF", extensions: ["pdf"] },
+  { id: "image", label: "Image", extensions: ["jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif"] },
+  { id: "excel", label: "Excel", extensions: ["xls", "xlsx"] },
+  { id: "word", label: "Word", extensions: ["doc", "docx"] },
+] as const;
+
+export function kpiTargetBounds(kpi: { targetMode?: "fixed" | "range"; target?: string; targetMin?: string; targetMax?: string }) {
+  const read = (value: string | undefined) => {
+    const match = value?.replaceAll(",", "").match(/-?\d+(?:\.\d+)?/);
+    return match ? Number(match[0]) : Number.NaN;
+  };
+  if (kpi.targetMode === "range") return { min: read(kpi.targetMin), max: read(kpi.targetMax) };
+  const value = read(kpi.target);
+  return { min: value, max: value };
+}
+
+export function kpiTargetText(kpi: { targetMode?: "fixed" | "range"; target?: string; targetMin?: string; targetMax?: string }) {
+  if (kpi.targetMode === "range") {
+    const min = kpi.targetMin?.trim() ?? "";
+    const max = kpi.targetMax?.trim() ?? "";
+    if (min && max) return `${min} – ${max}`;
+    return min || max;
+  }
+  return kpi.target?.trim() ?? "";
+}
+
+export function kpiEvidenceRequired(kpi: { evidenceRequired?: boolean; noEvidence?: boolean; evidence?: string }) {
+  if (typeof kpi.evidenceRequired === "boolean") return kpi.evidenceRequired;
+  return Boolean(kpi.evidence?.trim()) && !kpi.noEvidence;
+}
+
+export function kpiEvidenceTypes(kpi: { evidenceTypes?: string[]; evidenceRequired?: boolean; noEvidence?: boolean; evidence?: string }) {
+  if (Array.isArray(kpi.evidenceTypes)) return kpi.evidenceTypes;
+  return kpiEvidenceRequired(kpi) ? ["pdf", "image"] : [];
+}
+
+export function kpiFileAccept(types: string[]) {
+  return kpiFileTypes.filter((type) => types.includes(type.id)).flatMap((type) => type.extensions.map((extension) => `.${extension}`)).join(",");
+}
+
+export function fileMatchesKpiTypes(file: File, types: string[]) {
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return kpiFileTypes.some((type) => types.includes(type.id) && (type.extensions as readonly string[]).includes(extension));
+}
+
+export function kpiEvidenceLabel(kpi: { evidenceRequired?: boolean; noEvidence?: boolean; evidence?: string; evidenceTypes?: string[] }) {
+  if (!kpiEvidenceRequired(kpi)) return "Not required";
+  const labels = kpiFileTypes.filter((type) => kpiEvidenceTypes(kpi).includes(type.id)).map((type) => type.label);
+  return labels.length ? `Required: ${labels.join(", ")}` : "Required";
+}
+
 export type AgencyRecord = {
   id: string;
   name: string;
@@ -164,16 +216,16 @@ export const agencyDirectory: AgencyRecord[] = [
 ];
 
 export const standardKpis: Pick<CentralKpi, "name" | "unit" | "baseline" | "target" | "frequency" | "evidence">[] = [
-  { name: "Mangrove area restored", unit: "Hectares (ha)", baseline: "0 ha", target: "500 ha", frequency: "Quarterly", evidence: "Geo-photo" },
-  { name: "Mangrove survival rate", unit: "%", baseline: "70%", target: "90%", frequency: "Half-yearly", evidence: "Survey" },
-  { name: "Coral reef area restored", unit: "Hectares (ha)", baseline: "5 ha", target: "15 ha", frequency: "Half-yearly", evidence: "Geo-photo" },
-  { name: "Project physical progress", unit: "% completion", baseline: "0%", target: "100%", frequency: "Monthly", evidence: "Report" },
-  { name: "Fund utilisation", unit: "% of allocated funds", baseline: "0%", target: "90%", frequency: "Monthly / Quarterly", evidence: "UC/PFMS" },
-  { name: "Coastal erosion reduction", unit: "Metres / % change", baseline: "Baseline shoreline measurement", target: "10% reduction", frequency: "Annual", evidence: "Geo-photo" },
-  { name: "Water quality", unit: "mg/L", baseline: "Current measured value", target: "Prescribed threshold", frequency: "Quarterly", evidence: "Lab result" },
-  { name: "BEAMS facility completion", unit: "% / number of facilities", baseline: "20%", target: "100%", frequency: "Monthly", evidence: "Report" },
-  { name: "Blue Flag criteria compliance", unit: "% / number of criteria met", baseline: "25 of 33", target: "33 of 33", frequency: "Quarterly", evidence: "Report" },
-  { name: "Training coverage", unit: "Number of participants", baseline: "0", target: "1,000 participants", frequency: "Quarterly", evidence: "Report" },
+  { name: "Mangrove area restored", unit: "Hectares (ha)", baseline: "0", target: "500", frequency: "Quarterly", evidence: "Geo-photo" },
+  { name: "Mangrove survival rate", unit: "%", baseline: "70", target: "90", frequency: "Half-yearly", evidence: "Survey" },
+  { name: "Coral reef area restored", unit: "Hectares (ha)", baseline: "5", target: "15", frequency: "Half-yearly", evidence: "Geo-photo" },
+  { name: "Project physical progress", unit: "%", baseline: "0", target: "100", frequency: "Monthly", evidence: "Report" },
+  { name: "Fund utilisation", unit: "%", baseline: "0", target: "90", frequency: "Quarterly", evidence: "UC/PFMS" },
+  { name: "Coastal erosion reduction", unit: "%", baseline: "0", target: "10", frequency: "Annual", evidence: "Geo-photo" },
+  { name: "Water quality", unit: "mg/L", baseline: "0", target: "50", frequency: "Quarterly", evidence: "Lab result" },
+  { name: "BEAMS facility completion", unit: "%", baseline: "20", target: "100", frequency: "Monthly", evidence: "Report" },
+  { name: "Blue Flag criteria compliance", unit: "Criteria met", baseline: "25", target: "33", frequency: "Quarterly", evidence: "Report" },
+  { name: "Training coverage", unit: "Participants", baseline: "0", target: "1000", frequency: "Quarterly", evidence: "Report" },
 ];
 
 export function rowId(prefix: string) {
@@ -299,9 +351,14 @@ export function blankKpi(activityId = ""): CentralKpi {
     unit: standard.unit,
     baseline: standard.baseline,
     target: standard.target,
+    targetMode: "fixed",
+    targetMin: "",
+    targetMax: "",
     frequency: standard.frequency,
     activityId,
     evidence: "",
-    noEvidence: false,
+    noEvidence: true,
+    evidenceRequired: false,
+    evidenceTypes: [],
   };
 }

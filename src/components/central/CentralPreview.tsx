@@ -1,4 +1,4 @@
-import { agencyById, locationLabel, locationsForAssignment } from "@/data/central";
+import { agencyById, kpiEvidenceLabel, kpiTargetText, locationLabel, locationsForAssignment } from "@/data/central";
 import type { CentralProject } from "@/types/domain";
 
 export function CentralPreview({ project, hideIntro }: { project: CentralProject; hideIntro?: boolean }) {
@@ -103,9 +103,9 @@ export function CentralPreview({ project, hideIntro }: { project: CentralProject
                   <>
                     <td>{kpi.name}</td>
                     <td>{kpi.baseline}</td>
-                    <td>{kpi.target}</td>
+                    <td>{[kpiTargetText(kpi), kpi.unit].filter(Boolean).join(" ")}</td>
                     <td>{kpi.frequency}</td>
-                    <td>{kpi.noEvidence ? "Not available" : kpi.evidence || "—"}</td>
+                    <td>{kpiEvidenceLabel(kpi)}</td>
                   </>
                 )}
               </tr>

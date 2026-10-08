@@ -8,6 +8,7 @@ export type DashKpi = {
   definition: string;
   unit: string;
   target: number;
+  targetLabel?: string;
   achievement: number;
   status: KpiVerifyStatus;
   reported?: boolean;

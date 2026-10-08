@@ -236,10 +236,15 @@ export type CentralKpi = {
   unit: string;
   baseline: string;
   target: string;
+  targetMode?: "fixed" | "range";
+  targetMin?: string;
+  targetMax?: string;
   frequency: string;
   activityId: string;
   evidence: string;
   noEvidence: boolean;
+  evidenceRequired?: boolean;
+  evidenceTypes?: string[];
 };
 
 export type CentralProjectStatus = "draft" | "submitted" | "returned" | "approved" | "verified";
