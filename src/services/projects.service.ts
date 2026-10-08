@@ -6,6 +6,7 @@ import type { CampaignDraft, ListQuery, ListResult, NcmProject, SubmissionReceip
 const delayMs = 320;
 const DRAFT_KEY = "ncm.campaign.draft";
 const CREATED_PROJECTS_KEY = "ncm.projects.created";
+const ADMIN_EDITS_KEY = "ncm.projects.admin-edits";
 
 function wait(ms = delayMs) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -23,8 +24,30 @@ function readCreatedProjects(): NcmProject[] {
   }
 }
 
+function readAdminEdits(): Record<string, NcmProject> {
+  if (typeof window === "undefined") return {};
+  const raw = localStorage.getItem(ADMIN_EDITS_KEY);
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, NcmProject> : {};
+  } catch {
+    return {};
+  }
+}
+
+function applyAdminEdits(projects: NcmProject[]) {
+  const edits = readAdminEdits();
+  if (!Object.keys(edits).length) return projects;
+  return projects.map((project) => {
+    const edit = edits[project.id];
+    if (!edit) return project;
+    return { ...project, ...edit, id: project.id, campaignCode: project.campaignCode, status: project.status };
+  });
+}
+
 function readStore(): NcmProject[] {
-  return [...readCreatedProjects(), ...seedProjects];
+  return applyAdminEdits([...readCreatedProjects(), ...seedProjects]);
 }
 
 export const PROJECTS_EVENT = "ncm-projects-changed";
@@ -36,6 +59,25 @@ function writeCreatedProjects(items: NcmProject[]) {
 
 export function listStoredProjects(): NcmProject[] {
   return readCreatedProjects();
+}
+
+export function saveAdminProjectEdit(project: NcmProject) {
+  const existing = readStore().find((item) => item.id === project.id);
+  if (!existing) throw new Error("Project was not found.");
+  if (existing.status !== "Ongoing") throw new Error("Only ongoing projects can be edited.");
+  const edits = readAdminEdits();
+  const next: NcmProject = {
+    ...existing,
+    ...project,
+    id: existing.id,
+    campaignCode: existing.campaignCode,
+    status: existing.status,
+    updated: formatSubmissionTime(),
+  };
+  edits[project.id] = next;
+  localStorage.setItem(ADMIN_EDITS_KEY, JSON.stringify(edits));
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(PROJECTS_EVENT));
+  return next;
 }
 
 export function publishProject(project: NcmProject) {

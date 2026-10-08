@@ -366,6 +366,9 @@ th { color: #66788a; font-size: 12px; font-weight: 800; }
 .projects-table .project-title strong { overflow-wrap: anywhere; word-break: break-word; color: #121212; font-size: 13px; font-weight: 600; line-height: 1.3; }
 .projects-table .project-title small { margin-top: 2px; color: #98a2b3; font-size: 11px; font-weight: 400; line-height: 1.2; white-space: normal; overflow-wrap: anywhere; }
 .projects-table .text-link { color: #00389a; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.project-register table { min-width: 1160px; }
+.project-register th:nth-child(8), .project-register td:nth-child(8) { width: 168px; }
+.project-register .row-actions { display: inline-flex; align-items: center; gap: 12px; }
 .back-link { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px; color: var(--btn); font-weight: 800; text-decoration: none; }
 .back-link::before { content: "←"; }
 .detail-hero { display: grid; grid-template-columns: 84px minmax(0, 1fr) auto auto; gap: 14px; align-items: center; padding: 14px; border: 1px solid #e6edf5; border-radius: 16px; background: #fff; }
@@ -650,7 +653,8 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 .kpi-table input[type="radio"],
 .kpi-table input[type="checkbox"] { width: 16px; height: 16px; min-height: 16px; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; flex: none; accent-color: #00389a; }
 .kpi-table .kpi-file-types { display: grid; gap: 6px; width: 100%; margin-top: 2px; padding-top: 8px; border-top: 1px dashed #e4e7ec; }
-.kpi-table .kpi-range { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.kpi-table .kpi-range, .field .kpi-range { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.field .kpi-range { margin-top: 8px; }
 .kpi-table .kpi-target-cell input:not([type="radio"]),
 .kpi-table .kpi-range input { width: 100%; height: 36px; }
 .kpi-template-download { width: 100%; }
@@ -669,6 +673,7 @@ fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 .kpis-add-row { justify-content: flex-end; }
 .proposal-note { margin: 14px 0 0; padding: 12px 14px; border-radius: 8px; background: #f4f7fb; color: #3c4b5c; font-size: 13px; line-height: 1.5; }
 .proposal-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.proposal-actions a.btn-ghost { text-decoration: none; }
 .proposal-actions-end { display: flex; gap: 10px; }
 .proposal-success h1 { margin: 0 0 8px; font-size: 28px; }
 .doc-list { display: flex; flex-direction: column; }

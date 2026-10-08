@@ -11,8 +11,8 @@ import { agencyById, agenciesForActivity, agencyTypes, blankActivity, blankAssig
 import { downloadKpiTemplate, readKpiTemplate } from "@/lib/kpi-template";
 import { districtCentroid, districtsByState, siteCentroid, sitesByDistrict, stateCentroids, states } from "@/data/options";
 import { getSession } from "@/lib/session";
-import { saveCentralDraft, submitCentralProject } from "@/services/central-projects.service";
-import type { CentralActivity, CentralAgencyAssignment, CentralKpi, CentralLocation, CentralProject, CentralSubActivity } from "@/types/domain";
+import { reportsForProject, saveCentralDraft, submitCentralProject, updateListedCentralProject, updateSubmittedKpiReports } from "@/services/central-projects.service";
+import type { CentralActivity, CentralAgencyAssignment, CentralKpi, CentralLocation, CentralProject, CentralSubActivity, KpiReport } from "@/types/domain";
 
 
 const steps = [
@@ -72,6 +72,15 @@ function validate(draft: CentralProject, step: number) {
       if (!agenciesForActivity(draft, kpi.activityId).length) return `Tag an agency to the activity used by “${kpi.name || "this KPI"}”.`;
     }
   }
+  return "";
+}
+
+function validateSubmittedKpis(draft: CentralProject, reports: KpiReport[]) {
+  const ids = new Set(reports.map((report) => report.kpiId));
+  if (!ids.size) return "";
+  const message = validate({ ...draft, kpis: draft.kpis.filter((kpi) => ids.has(kpi.id)) }, 4);
+  if (message) return message;
+  if (reports.some((report) => !report.achievement.trim())) return "Enter the achievement for every submitted KPI.";
   return "";
 }
 
@@ -163,7 +172,8 @@ function withNumericTargets(project: CentralProject): CentralProject {
   };
 }
 
-export function CentralWizard({ initial }: { initial?: CentralProject }) {
+export function CentralWizard({ initial, mode = "create" }: { initial?: CentralProject; mode?: "create" | "admin-edit" }) {
+  const editing = mode === "admin-edit";
   const [step, setStep] = useState(1);
   const [draft, setDraft] = useState<CentralProject | null>(initial ? withNumericTargets(initial) : null);
   const [error, setError] = useState("");
@@ -171,6 +181,7 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
   const [reference, setReference] = useState("");
   const [agencyType, setAgencyType] = useState<Record<string, string>>({});
   const [subActivityChoice, setSubActivityChoice] = useState<Record<string, string>>({});
+  const [submittedReports, setSubmittedReports] = useState<KpiReport[]>([]);
   const matrixActivities = useMemo(() => activityMatrixForComponent(draft?.component ?? ""), [draft?.component]);
 
   useEffect(() => {
@@ -178,8 +189,29 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
     const email = getSession()?.identifier ?? "central@ncm.gov.in";
     setDraft(emptyCentralProject(email));
   }, [initial]);
+  useEffect(() => {
+    if (mode !== "admin-edit" || !initial?.id) return;
+    setSubmittedReports(reportsForProject(initial.id).filter((report) => report.status !== "draft"));
+  }, [mode, initial?.id]);
 
   if (!draft) return null;
+  const stepItems = editing
+    ? steps.map((item) => item.id === 4 ? { ...item, hint: "Only KPIs an agency has submitted" } : item.id === 5 ? { ...item, label: "Review & Save", hint: "Save the updated project" } : item)
+    : steps;
+  if (reference && editing) {
+    return (
+      <div className="page">
+        <header className="page-head dash-head">
+          <h1>Project updated</h1>
+          <Link className="btn-primary" href="/projects">Back to Projects</Link>
+        </header>
+        <section className="panel">
+          <p className="welcome" role="status">Changes to <strong>{draft.name}</strong> are saved. This project stays ongoing, and its review status is unchanged.</p>
+          <p><Link className="text-link" href={`/projects/${reference}`}>View Details</Link></p>
+        </section>
+      </div>
+    );
+  }
   if (reference) {
     const session = getSession();
     const actor = session?.role || "Central user";
@@ -355,8 +387,9 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
 
   async function onContinue() {
     if (!draft) return;
-    const message = validate(draft, step);
+    const message = editing && step === 4 ? validateSubmittedKpis(draft, submittedReports) : validate(draft, step);
     if (message) { setError(message); return; }
+    if (editing) { setStep((value) => Math.min(5, value + 1)); return; }
     setPending("next");
     try { await persist(); setStep((value) => Math.min(5, value + 1)); }
     catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to save this step."); }
@@ -365,15 +398,25 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
 
   async function onSubmit() {
     if (!draft) return;
-    for (const item of steps.slice(0, 4)) {
+    for (const item of steps.slice(0, editing ? 3 : 4)) {
       const message = validate(draft, item.id);
       if (message) { setStep(item.id); setError(message); return; }
     }
+    if (editing) {
+      const message = validateSubmittedKpis(draft, submittedReports);
+      if (message) { setStep(4); setError(message); return; }
+    }
     setPending("submit");
     try {
+      if (editing) {
+        const saved = await updateListedCentralProject(draft);
+        updateSubmittedKpiReports(submittedReports);
+        setReference(saved.id);
+        return;
+      }
       const saved = await submitCentralProject(draft);
       setReference(saved.id);
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to send this project."); }
+    } catch (caught) { setError(caught instanceof Error ? caught.message : editing ? "Unable to save this project." : "Unable to send this project."); }
     finally { setPending(null); }
   }
 
@@ -381,13 +424,13 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
     <div className="page campaign-page">
       <header className="page-head">
         <div>
-          <h1>Create project</h1>
-          <p>Define the project, locations, activities, agencies and KPIs, then send it for admin review.</p>
+          <h1>{editing ? "Edit project" : "Create project"}</h1>
+          <p>{editing ? "Update this ongoing project. In KPI Configuration, only a KPI an agency has already submitted can be edited. Review status stays the same." : "Define the project, locations, activities, agencies and KPIs, then send it for admin review."}</p>
         </div>
       </header>
       {draft.returnNote ? <p className="proposal-note" role="status">Returned for correction: {draft.returnNote}</p> : null}
       <ol className="campaign-steps steps-5" aria-label="Project progress">
-        {steps.map((item) => {
+        {stepItems.map((item) => {
           const state = item.id < step ? "done" : item.id === step ? "current" : "upcoming";
           return (
             <li key={item.id} className={`step ${state}`}>
@@ -722,7 +765,66 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
         </section>
       ) : null}
 
-      {step === 4 ? (
+      {step === 4 && editing ? (
+        <section className="panel proposal-card">
+          <header><h2>Submitted KPIs</h2><p>Only KPIs an agency has already submitted can be edited. Other KPIs stay unchanged, and the review status stays the same.</p></header>
+          {submittedReports.length === 0 ? <EmptyState title="No submitted KPIs" message="An agency has not submitted a KPI for this project yet." /> : [...new Set(submittedReports.map((report) => report.kpiId))].map((kpiId) => {
+            const kpi = draft.kpis.find((item) => item.id === kpiId);
+            if (!kpi) return null;
+            const reports = submittedReports.filter((report) => report.kpiId === kpiId);
+            return (
+              <article key={kpiId} className="location-card site-card">
+                <div className="form-grid">
+                  <label className="field span-2"><span>KPI</span><input value={kpi.name} onChange={(event) => patchKpi(kpi.id, { name: event.target.value })} /></label>
+                  <label className="field"><span>Unit</span><input value={kpi.unit} onChange={(event) => patchKpi(kpi.id, { unit: event.target.value })} /></label>
+                  <label className="field"><span>Baseline</span><input value={kpi.baseline} onChange={(event) => patchKpi(kpi.id, { baseline: event.target.value })} /></label>
+                  <label className="field"><span>Reporting frequency</span><input value={kpi.frequency} onChange={(event) => patchKpi(kpi.id, { frequency: event.target.value })} /></label>
+                  <label className="field"><span>Applicable activity</span>
+                    <select value={kpi.activityId} onChange={(event) => patchKpi(kpi.id, { activityId: event.target.value })}>
+                      <option value="">Select</option>
+                      {draft.activities.map((activity) => <option key={activity.id} value={activity.id}>{activity.name || "Untitled activity"}</option>)}
+                    </select>
+                  </label>
+                  <div className="field span-2">
+                    <span>Target</span>
+                    <div className="choice-row">
+                      <label><input type="radio" name={`target-${kpi.id}`} checked={kpi.targetMode !== "range"} onChange={() => patchKpi(kpi.id, { targetMode: "fixed" })} /> Fixed value</label>
+                      <label><input type="radio" name={`target-${kpi.id}`} checked={kpi.targetMode === "range"} onChange={() => patchKpi(kpi.id, { targetMode: "range" })} /> Range value</label>
+                    </div>
+                    {kpi.targetMode === "range" ? (
+                      <div className="kpi-range">
+                        <input aria-label="Minimum" inputMode="decimal" placeholder="Min" value={kpi.targetMin ?? ""} onChange={(event) => patchKpi(kpi.id, { targetMin: event.target.value })} />
+                        <input aria-label="Maximum" inputMode="decimal" placeholder="Max" value={kpi.targetMax ?? ""} onChange={(event) => patchKpi(kpi.id, { targetMax: event.target.value })} />
+                      </div>
+                    ) : <input aria-label="Fixed value" inputMode="decimal" placeholder="56" value={kpi.target} onChange={(event) => patchKpi(kpi.id, { target: event.target.value })} />}
+                  </div>
+                </div>
+                <div className="table-wrap">
+                  <table className="proposal-table">
+                    <thead><tr><th>Location</th><th>Agency</th><th>Achievement</th><th>Remarks</th><th>Status</th></tr></thead>
+                    <tbody>
+                      {reports.map((report) => {
+                        const location = draft.locations.find((item) => item.id === report.locationId);
+                        return (
+                          <tr key={report.id}>
+                            <td>{location ? locationLabel(location) : "—"}</td>
+                            <td>{agencyById(report.agencyId)?.name || "Agency"}</td>
+                            <td><input aria-label="Achievement" value={report.achievement} onChange={(event) => setSubmittedReports((current) => current.map((item) => item.id === report.id ? { ...item, achievement: event.target.value } : item))} /></td>
+                            <td><input aria-label="Remarks" value={report.remarks} onChange={(event) => setSubmittedReports((current) => current.map((item) => item.id === report.id ? { ...item, remarks: event.target.value } : item))} /></td>
+                            <td>{report.status === "approved" ? "Approved" : report.status === "returned" ? "Returned" : "Submitted"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      ) : null}
+
+      {step === 4 && !editing ? (
         <section className="panel proposal-card">
           <header><h2>KPI configuration</h2><p>Choose a standard KPI or upload a custom KPI template. Set a fixed or range target, and say whether evidence is required.</p></header>
           {draft.kpis.length === 0 ? (
@@ -833,10 +935,10 @@ export function CentralWizard({ initial }: { initial?: CentralProject }) {
       {step === 5 ? <CentralPreview project={draft} /> : null}
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       <div className="proposal-actions">
-        <button className="btn-ghost" type="button" disabled={pending !== null} onClick={() => void onSave()}>{pending === "save" ? "Saving…" : "Save Draft"}</button>
+        {editing ? <Link className="btn-ghost" href="/projects">Back to Projects</Link> : <button className="btn-ghost" type="button" disabled={pending !== null} onClick={() => void onSave()}>{pending === "save" ? "Saving…" : "Save Draft"}</button>}
         <div className="proposal-actions-end">
           {step > 1 ? <button className="btn-ghost" type="button" disabled={pending !== null} onClick={() => { setError(""); setStep((value) => value - 1); }}>Back & Edit</button> : null}
-          {step < 5 ? <button className="btn-primary" type="button" disabled={pending !== null} onClick={() => void onContinue()}>{pending === "next" ? "Saving…" : "Continue"}</button> : <button className="btn-primary" type="button" disabled={pending !== null} onClick={() => void onSubmit()}>{pending === "submit" ? "Sending…" : "Send for Review"}</button>}
+          {step < 5 ? <button className="btn-primary" type="button" disabled={pending !== null} onClick={() => void onContinue()}>{pending === "next" ? "Saving…" : "Continue"}</button> : <button className="btn-primary" type="button" disabled={pending !== null} onClick={() => void onSubmit()}>{pending === "submit" ? (editing ? "Saving…" : "Sending…") : (editing ? "Save changes" : "Send for Review")}</button>}
         </div>
       </div>
     </div>

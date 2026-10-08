@@ -1,5 +1,5 @@
 import { agencyById, agencyDirectory } from "@/data/central";
-import { publishProject } from "@/services/projects.service";
+import { PROJECTS_EVENT, publishProject } from "@/services/projects.service";
 import type { CentralProject, KpiReport, NcmProject } from "@/types/domain";
 
 const PROJECTS_KEY = "ncm.central.projects";
@@ -173,6 +173,43 @@ export function listAgencyCentralProjects(email: string) {
   return listApprovedCentralProjects().filter((project) => assignmentsForUser(project, email).length > 0);
 }
 
+export function updateListedCentralProject(project: CentralProject) {
+  const all = readProjects();
+  const index = all.findIndex((item) => item.id === project.id);
+  if (index < 0) throw new Error("This project was not found.");
+  const current = all[index];
+  const next: CentralProject = {
+    ...current,
+    name: project.name,
+    component: project.component,
+    description: project.description,
+    start: project.start,
+    end: project.end,
+    locations: project.locations,
+    totalCost: project.sanctioned.trim() || current.totalCost,
+    fundingSource: project.fundingSource,
+    sanctioned: project.sanctioned,
+    releaseDetails: project.releaseDetails,
+    releaseDocument: project.releaseDocument,
+    financialYear: project.financialYear,
+    activities: project.activities,
+    agencies: project.agencies,
+    kpis: project.kpis,
+    id: current.id,
+    createdBy: current.createdBy,
+    status: current.status,
+    returnNote: current.returnNote,
+    published: current.published,
+    feedback: current.feedback ?? [],
+    updated: new Date().toISOString(),
+  };
+  all[index] = next;
+  writeProjects(all);
+  if (next.published || next.status === "verified") publishProject(toPortalProject(next));
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(PROJECTS_EVENT));
+  return next;
+}
+
 export function saveCentralDraft(project: CentralProject) {
   const next: CentralProject = { ...project, status: project.status === "returned" ? "returned" : "draft", updated: new Date().toISOString() };
   const all = readProjects();
@@ -224,6 +261,27 @@ export function addCentralProjectFeedback(id: string, author: string, note: stri
 
 export function reportsForProject(projectId: string) {
   return readReports().filter((item) => item.projectId === projectId);
+}
+
+export function updateSubmittedKpiReports(reports: KpiReport[]) {
+  const all = readReports();
+  let changed = false;
+  const now = new Date().toISOString();
+  reports.forEach((report) => {
+    const index = all.findIndex((item) => item.id === report.id);
+    if (index < 0 || all[index].status === "draft") return;
+    if (all[index].achievement === report.achievement && all[index].remarks === report.remarks) return;
+    const current = all[index];
+    all[index] = {
+      ...current,
+      achievement: report.achievement,
+      remarks: report.remarks,
+      updated: now,
+      history: [...current.history, { at: now, achievement: report.achievement, status: current.status }],
+    };
+    changed = true;
+  });
+  if (changed) writeReports(all);
 }
 
 export function listSubmittedKpiReports() {

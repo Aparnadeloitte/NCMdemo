@@ -7,8 +7,9 @@ import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/
 import { projectKpis } from "@/data/projects";
 import { summarize, useStoredProjects } from "@/lib/project-stats";
 import { states } from "@/data/options";
+import { getSession } from "@/lib/session";
 import { ensureListedCentralProjects } from "@/services/central-projects.service";
-import { listProjects } from "@/services/projects.service";
+import { listProjects, PROJECTS_EVENT } from "@/services/projects.service";
 import type { ListQuery, NcmProject } from "@/types/domain";
 
 export function ProjectsScreen() {
@@ -17,6 +18,8 @@ export function ProjectsScreen() {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
   const [welcome, setWelcome] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [revision, setRevision] = useState(0);
   const stored = useStoredProjects();
   const stats = useMemo(
     () => summarize(stored, { search: query.search, state: query.state }),
@@ -25,6 +28,12 @@ export function ProjectsScreen() {
 
   const listedIds = stored.map((project) => project.id).join("|");
   useEffect(() => { setWelcome(new URLSearchParams(window.location.search).get("welcome")); }, []);
+  useEffect(() => { setIsAdmin(getSession()?.role === "Admin user"); }, []);
+  useEffect(() => {
+    const bump = () => setRevision((value) => value + 1);
+    window.addEventListener(PROJECTS_EVENT, bump);
+    return () => window.removeEventListener(PROJECTS_EVENT, bump);
+  }, []);
   useEffect(() => {
     let active = true;
     setRows(null);
@@ -40,7 +49,7 @@ export function ProjectsScreen() {
         if (active) setError(caught instanceof Error ? caught.message : "Unable to load projects.");
       });
     return () => { active = false; };
-  }, [query, listedIds]);
+  }, [query, listedIds, revision]);
 
   return (
     <div className="page">
@@ -96,7 +105,7 @@ export function ProjectsScreen() {
       {!rows && !error ? <LoadingState label="Loading projects…" /> : null}
       {rows && rows.length === 0 ? <EmptyState title="No projects found" message="Try a different search, status or state." /> : null}
       {rows && rows.length > 0 ? (
-        <section className="panel projects-table">
+        <section className="panel projects-table project-register">
           <DataTable
             rows={rows}
             rowKey={(row) => row.id}
@@ -126,7 +135,16 @@ export function ProjectsScreen() {
               { key: "type", header: "Intervention Type", render: (row) => row.interventionType },
               { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
               { key: "cost", header: "Total Cost", render: (row) => row.totalCost },
-              { key: "action", header: "Action", render: (row) => <Link className="text-link" href={`/projects/${row.id}`}>View Details</Link> },
+              {
+                key: "action",
+                header: "Action",
+                render: (row) => (
+                  <span className="row-actions">
+                    <Link className="text-link" href={`/projects/${row.id}`}>View Details</Link>
+                    {isAdmin && row.status === "Ongoing" ? <Link className="text-link" href={`/projects/${row.id}/edit`}>Edit</Link> : null}
+                  </span>
+                ),
+              },
             ]}
           />
           <Pagination page={query.page} pageSize={query.pageSize} total={total} onPage={(page) => setQuery((current) => ({ ...current, page }))} />
